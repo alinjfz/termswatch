@@ -1,0 +1,204 @@
+[
+  {
+    "createdAt": "2026-07-08T19:26:15.544Z",
+    "mode": "url",
+    "sources": {
+      "previous": {
+        "label": "Original policy",
+        "value": "https://demo.termswatch.app/privacy/v1",
+        "title": "Privacy Policy Demo (previous)",
+        "mode": "url"
+      },
+      "current": {
+        "label": "Updated policy",
+        "value": "https://demo.termswatch.app/privacy/v2",
+        "title": "Privacy Policy Demo (current)",
+        "mode": "url"
+      }
+    },
+    "overview": {
+      "headline": "3 high-risk changes need review",
+      "summaryBullets": [
+        "7 clause changes detected across 4 modified, 2 added, and 1 removed sections.",
+        "High-risk movement appears in Sharing Information and Dispute Resolution.",
+        "The biggest themes are Data sharing expansion plus Arbitration or class action.",
+        "Review the highlighted clauses before accepting the new terms, especially where rights or data use expanded."
+      ],
+      "whyMatters": [
+        "Broader sharing language can materially change how personal data moves outside the service.",
+        "Dispute-resolution changes can limit how users or customers challenge the company.",
+        "Payment and renewal changes can create direct financial impact for the customer.",
+        "Retention changes alter how long sensitive information stays available.",
+        "The language changed, but it does not strongly match a high-signal legal or privacy risk pattern."
+      ],
+      "disclaimer": "Informational output only. TermsWatch surfaces change intelligence and risk signals, not legal advice.",
+      "confidence": "medium",
+      "modelMode": "deterministic fallback"
+    },
+    "metrics": {
+      "total": 7,
+      "added": 2,
+      "removed": 1,
+      "modified": 4,
+      "highRisk": 3,
+      "mediumRisk": 1,
+      "lowRisk": 3,
+      "score": 99
+    },
+    "changes": [
+      {
+        "id": "4-sharing-information",
+        "heading": "Sharing Information",
+        "changeType": "modified",
+        "changeLabel": "Modified clause",
+        "beforeText": "Sharing Information We do not sell personal information. We share data with service providers only to support operations on our behalf.",
+        "afterText": "Sharing Information We may share personal information with affiliates, analytics partners, and advertising partners to measure campaigns and improve recommendations. We do not sell personal information for money.",
+        "riskLevel": "high",
+        "riskLabel": "Data sharing expansion",
+        "riskScore": 3,
+        "whyItMatters": "Broader sharing language can materially change how personal data moves outside the service.",
+        "summary": "The clause was broadened with additional language, suggesting expanded scope or new conditions.",
+        "tags": [
+          "privacy",
+          "sharing",
+          "modified"
+        ],
+        "similarity": 0.32
+      },
+      {
+        "id": "6-dispute-resolution",
+        "heading": "Dispute Resolution",
+        "changeType": "added",
+        "changeLabel": "Added clause",
+        "beforeText": "",
+        "afterText": "Dispute Resolution Any dispute will be resolved through binding arbitration on an individual basis, and users waive participation in class actions.",
+        "riskLevel": "high",
+        "riskLabel": "Arbitration or class action",
+        "riskScore": 3,
+        "whyItMatters": "Dispute-resolution changes can limit how users or customers challenge the company.",
+        "summary": "This language appears in the new version and creates a fresh obligation, permission, or disclosure.",
+        "tags": [
+          "legal",
+          "disputes",
+          "added"
+        ],
+        "similarity": 0
+      },
+      {
+        "id": "7-billing",
+        "heading": "Billing",
+        "changeType": "added",
+        "changeLabel": "Added clause",
+        "beforeText": "",
+        "afterText": "Billing Paid plans automatically renew unless canceled before the renewal date. Fees are non-refundable except where required by law.",
+        "riskLevel": "high",
+        "riskLabel": "Auto-renewal and billing",
+        "riskScore": 3,
+        "whyItMatters": "Payment and renewal changes can create direct financial impact for the customer.",
+        "summary": "This language appears in the new version and creates a fresh obligation, permission, or disclosure.",
+        "tags": [
+          "billing",
+          "subscription",
+          "added"
+        ],
+        "similarity": 0
+      },
+      {
+        "id": "5-retention",
+        "heading": "Retention",
+        "changeType": "modified",
+        "changeLabel": "Modified clause",
+        "beforeText": "Retention We keep account data for as long as the account remains active and remove deleted account data within 30 days.",
+        "afterText": "Retention We may retain account data for as long as needed for legal, security, analytics, and backup purposes, even after account closure.",
+        "riskLevel": "medium",
+        "riskLabel": "Data retention and deletion",
+        "riskScore": 2,
+        "whyItMatters": "Retention changes alter how long sensitive information stays available.",
+        "summary": "The clause was broadened with additional language, suggesting expanded scope or new conditions.",
+        "tags": [
+          "privacy",
+          "retention",
+          "modified"
+        ],
+        "similarity": 0.29
+      },
+      {
+        "id": "2-data-we-collect",
+        "heading": "Data We Collect",
+        "changeType": "modified",
+        "changeLabel": "Modified clause",
+        "beforeText": "Data We Collect We collect account details, basic usage information, and device identifiers needed to operate the service.",
+        "afterText": "Data We Collect We collect account details, device identifiers, approximate location, and product interaction data to operate and improve the service.",
+        "riskLevel": "low",
+        "riskLabel": "General wording change",
+        "riskScore": 1,
+        "whyItMatters": "The language changed, but it does not strongly match a high-signal legal or privacy risk pattern.",
+        "summary": "The clause was broadened with additional language, suggesting expanded scope or new conditions.",
+        "tags": [
+          "general",
+          "modified"
+        ],
+        "similarity": 0.57
+      },
+      {
+        "id": "3-how-we-use-data",
+        "heading": "How We Use Data",
+        "changeType": "modified",
+        "changeLabel": "Modified clause",
+        "beforeText": "How We Use Data We use personal information to provide the service, secure accounts, and send service updates.",
+        "afterText": "How We Use Data We use personal information to provide the service, personalize the product experience, train internal models, and send service updates.",
+        "riskLevel": "low",
+        "riskLabel": "General wording change",
+        "riskScore": 1,
+        "whyItMatters": "The language changed, but it does not strongly match a high-signal legal or privacy risk pattern.",
+        "summary": "The clause was broadened with additional language, suggesting expanded scope or new conditions.",
+        "tags": [
+          "general",
+          "modified"
+        ],
+        "similarity": 0.62
+      },
+      {
+        "id": "6-disputes",
+        "heading": "Disputes",
+        "changeType": "removed",
+        "changeLabel": "Removed clause",
+        "beforeText": "Disputes Disputes may be brought in local courts where required by law.",
+        "afterText": "",
+        "riskLevel": "low",
+        "riskLabel": "General wording change",
+        "riskScore": 1,
+        "whyItMatters": "The language changed, but it does not strongly match a high-signal legal or privacy risk pattern.",
+        "summary": "This language existed before but no longer appears, which may reduce a user protection or a provider commitment.",
+        "tags": [
+          "general",
+          "removed"
+        ],
+        "similarity": 0
+      }
+    ],
+    "runLog": [
+      {
+        "title": "Sources ingested",
+        "detail": "Fetched and extracted both URLs on the server."
+      },
+      {
+        "title": "Clauses normalized",
+        "detail": "Cleaned noisy markup, segmented the text, and mapped likely sections."
+      },
+      {
+        "title": "Baseline diff complete",
+        "detail": "Matched document sections and found 7 changed clauses."
+      },
+      {
+        "title": "Risk evaluation complete",
+        "detail": "Ranked 3 high-risk changes using deterministic fallback."
+      },
+      {
+        "title": "Summary generated",
+        "detail": "Prepared executive takeaways, why-it-matters notes, and review guidance."
+      }
+    ],
+    "id": "0e15cf35-f59d-4895-bba5-478e00f786f6"
+  }
+]
