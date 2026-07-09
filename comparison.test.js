@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { getAIProviderStatus } from './server/llm.js';
-import { runDeterministicAnalysis } from './shared/analysis.js';
+import { runDeterministicAnalysis, runSingleDocumentAnalysis } from './shared/analysis.js';
 
 const fallbackTexts = {
   old: `Privacy Policy
@@ -53,6 +53,23 @@ We delete data after closure.`;
 
   assert.equal(result.metrics.total, 0);
   assert.equal(result.metrics.score, 0);
+});
+
+test('single-document analysis flags clauses without requiring a second version', () => {
+  const policy = `Privacy Policy
+
+Data Sharing
+We may share personal information with affiliates, analytics partners, and advertising partners.
+
+Dispute Resolution
+Any dispute will be resolved through binding arbitration on an individual basis.`;
+
+  const result = runSingleDocumentAnalysis(policy);
+
+  assert.equal(result.overview.comparisonKind, 'single');
+  assert.ok(result.metrics.total >= 2);
+  assert.ok(result.changes.every((change) => change.changeType === 'review'));
+  assert.ok(result.changes.some((change) => change.riskLevel === 'high'));
 });
 
 test('arbitration language is classified as high risk', () => {

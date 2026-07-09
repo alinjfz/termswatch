@@ -2090,6 +2090,19 @@ textarea {
   gap: 20px;
 }
 
+.version-stack {
+  display: grid;
+  gap: 20px;
+}
+
+.field-version-optional {
+  opacity: 0.96;
+}
+
+.diff-columns-single .diff-pane-after {
+  flex: 1 1 100%;
+}
+
 .field-version {
   padding: 18px;
   border-radius: 20px;

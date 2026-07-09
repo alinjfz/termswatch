@@ -3,7 +3,7 @@ import OpenAI from 'openai';
 import { z } from 'zod';
 import { zodTextFormat } from 'openai/helpers/zod';
 
-import { runDeterministicAnalysis } from '../shared/analysis.js';
+import { normalizeText, runDeterministicAnalysis, runSingleDocumentAnalysis } from '../shared/analysis.js';
 
 loadEnvFile();
 
@@ -248,7 +248,17 @@ function applyFallbackMessaging(baseline, reason) {
 
 export async function analyzeDocuments({ previousText, currentText, mode, model = 'default' }) {
   const resolvedModel = resolveModel(model);
-  const baseline = runDeterministicAnalysis(previousText, currentText);
+  const hasPrevious = Boolean(normalizeText(previousText));
+  const hasCurrent = Boolean(normalizeText(currentText));
+
+  if (!hasPrevious && !hasCurrent) {
+    throw new Error('Provide policy text or a URL to analyze.');
+  }
+
+  const baseline =
+    hasPrevious && hasCurrent
+      ? runDeterministicAnalysis(previousText, currentText)
+      : runSingleDocumentAnalysis(hasCurrent ? currentText : previousText);
   let enhanced = null;
   let modelMode = 'deterministic fallback';
   let enhancementNote = 'Prepared executive takeaways, why-it-matters notes, and review guidance.';
@@ -285,6 +295,7 @@ export async function analyzeDocuments({ previousText, currentText, mode, model 
         summaryBullets: parsed.summaryBullets,
         whyMatters: parsed.whyMatters,
         modelMode,
+        comparisonKind: baseline.overview.comparisonKind,
       }
     : { ...baseline.overview, modelMode };
 

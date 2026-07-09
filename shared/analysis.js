@@ -57,7 +57,7 @@ const RISK_RULES = [
   },
 ];
 
-function normalizeText(text) {
+export function normalizeText(text) {
   return String(text || '')
     .replace(/\r/g, '')
     .replace(/[ \t]+/g, ' ')
@@ -197,6 +197,91 @@ function buildWhyMatters(changes) {
   return reasons.length ? reasons.slice(0, 5) : ['The versions are materially aligned, so no urgent follow-up is signaled.'];
 }
 
+function buildSingleDocSummary(changes, metrics) {
+  if (!changes.length) {
+    return [
+      'No reviewable clauses were detected in the submitted text.',
+      'Try pasting a longer policy section with clear headings or paragraph breaks.',
+    ];
+  }
+
+  const bullets = [
+    `${metrics.total} clauses flagged for review across the submitted policy text.`,
+  ];
+
+  const highRiskChanges = changes.filter((change) => change.riskLevel === 'high').slice(0, 2);
+  if (highRiskChanges.length) {
+    bullets.push(`Highest-priority language appears in ${highRiskChanges.map((change) => change.heading).join(' and ')}.`);
+  }
+
+  const themes = [...new Set(changes.map((change) => change.riskLabel))].slice(0, 2);
+  if (themes.length) {
+    bullets.push(`Key themes include ${themes.join(' and ')}.`);
+  }
+
+  bullets.push(
+    metrics.highRisk
+      ? 'Review the highlighted clauses before accepting or signing this policy.'
+      : 'Most flagged clauses look lower urgency, but the full text still merits a human review.',
+  );
+
+  return bullets.slice(0, 5);
+}
+
+export function runSingleDocumentAnalysis(text) {
+  const clauses = splitIntoClauses(text);
+  const changes = clauses.map((clause) => {
+    const risk = classifyRisk(clause.text);
+    return {
+      id: clause.id,
+      heading: clause.heading,
+      changeType: 'review',
+      changeLabel: 'Clause flagged',
+      beforeText: '',
+      afterText: clause.text,
+      riskLevel: risk.level,
+      riskLabel: risk.label,
+      riskScore: risk.score,
+      whyItMatters: risk.why,
+      summary: `This clause contains language that may warrant review under ${risk.label.toLowerCase()} themes.`,
+      tags: [...risk.tags, 'review'],
+      similarity: 0,
+    };
+  });
+
+  const sortedChanges = changes.sort((a, b) => b.riskScore - a.riskScore);
+  const metrics = {
+    total: sortedChanges.length,
+    added: 0,
+    removed: 0,
+    modified: 0,
+    reviewed: sortedChanges.length,
+    highRisk: sortedChanges.filter((change) => change.riskLevel === 'high').length,
+    mediumRisk: sortedChanges.filter((change) => change.riskLevel === 'medium').length,
+    lowRisk: sortedChanges.filter((change) => change.riskLevel === 'low').length,
+    score: Math.min(99, sortedChanges.reduce((sum, change) => sum + change.riskScore * 9, 0)),
+  };
+
+  return {
+    overview: {
+      headline:
+        metrics.highRisk > 0
+          ? `${metrics.highRisk} high-risk clauses need review`
+          : metrics.total > 0
+            ? 'Policy clauses flagged for review'
+            : 'No reviewable clauses detected',
+      summaryBullets: buildSingleDocSummary(sortedChanges, metrics),
+      whyMatters: buildWhyMatters(sortedChanges),
+      disclaimer: 'Informational output only. TermsWatch surfaces change intelligence and risk signals, not legal advice.',
+      confidence: metrics.total ? 'medium' : 'high',
+      modelMode: 'deterministic fallback',
+      comparisonKind: 'single',
+    },
+    metrics,
+    changes: sortedChanges,
+  };
+}
+
 export function runDeterministicAnalysis(previousText, currentText) {
   const previousClauses = splitIntoClauses(previousText);
   const currentClauses = splitIntoClauses(currentText);
@@ -300,6 +385,7 @@ export function runDeterministicAnalysis(previousText, currentText) {
       disclaimer: 'Informational output only. TermsWatch surfaces change intelligence and risk signals, not legal advice.',
       confidence: metrics.total ? 'medium' : 'high',
       modelMode: 'deterministic fallback',
+      comparisonKind: 'diff',
     },
     metrics,
     changes: sortedChanges,

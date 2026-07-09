@@ -40,6 +40,39 @@ function currentReportIdFromPath(path) {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+function formatReportSources(report) {
+  const previousTitle = report?.sources?.previous?.title;
+  const currentTitle = report?.sources?.current?.title;
+  const isSingle = report?.overview?.comparisonKind === 'single';
+
+  if (isSingle) {
+    const title = previousTitle !== 'Not provided' ? previousTitle : currentTitle;
+    return title || 'Submitted policy';
+  }
+
+  if (previousTitle && currentTitle && previousTitle !== 'Not provided' && currentTitle !== 'Not provided') {
+    return `${previousTitle} → ${currentTitle}`;
+  }
+
+  return currentTitle || previousTitle || 'Policy review';
+}
+
+function hasCompareInput(form) {
+  if (form.mode === 'url') {
+    return Boolean(form.previousUrl.trim() && form.currentUrl.trim());
+  }
+
+  return Boolean(form.previousText.trim() && form.currentText.trim());
+}
+
+function hasPolicyInput(form) {
+  if (form.mode === 'url') {
+    return Boolean(form.previousUrl.trim() || form.currentUrl.trim());
+  }
+
+  return Boolean(form.previousText.trim() || form.currentText.trim());
+}
+
 function formatAuthError(message, mode) {
   const normalized = String(message || '').trim();
 
@@ -588,7 +621,7 @@ function DashboardOverview({ user, stats, history, setRoute, setReportId }) {
                 <div className="dashboard-report-main">
                   <strong>{item.headline}</strong>
                   <span>
-                    {item.sources.previous.title} → {item.sources.current.title}
+                    {formatReportSources(item)}
                   </span>
                 </div>
                 <div className="dashboard-report-meta">
@@ -634,6 +667,7 @@ function ComparisonWorkspace({
   aiStatus,
 }) {
   const featuredSamples = samples.slice(0, 3);
+  const isComparison = hasCompareInput(form);
 
   return (
     <section className="workspace-page">
@@ -641,7 +675,9 @@ function ComparisonWorkspace({
         <div>
           <p className="section-label">New comparison</p>
           <h1 className="workspace-title">Run a policy review</h1>
-          <p className="hero-lead">Bring in two versions by URL or pasted text. TermsWatch extracts readable content, compares clauses, and ranks material risk.</p>
+          <p className="hero-lead">
+            Paste a policy to flag risky clauses, or add a second version to compare before and after.
+          </p>
         </div>
         <div className={classNames('ai-status-card', aiStatus?.configured ? 'is-live' : 'is-fallback')}>
           <span className="status-dot" />
@@ -704,39 +740,51 @@ function ComparisonWorkspace({
             {form.mode === 'url' ? (
               <div className="composer-section field-grid version-grid">
                 <label className="field field-version field-version-before">
-                  <span className="version-label version-label-before">Before · original URL</span>
+                  <span className="version-label version-label-before">Policy URL</span>
                   <input
                     type="url"
                     value={form.previousUrl}
-                    placeholder="https://example.com/privacy-v1"
+                    placeholder="https://example.com/privacy-policy"
                     onChange={(event) => setForm((current) => ({ ...current, previousUrl: event.target.value }))}
                   />
                 </label>
-                <label className="field field-version field-version-after">
-                  <span className="version-label version-label-after">After · updated URL</span>
+                <label className="field field-version field-version-after field-version-optional">
+                  <span className="version-label version-label-after">Compare against (optional)</span>
                   <input
                     type="url"
                     value={form.currentUrl}
-                    placeholder="https://example.com/privacy-v2"
+                    placeholder="https://example.com/privacy-policy-v2"
                     onChange={(event) => setForm((current) => ({ ...current, currentUrl: event.target.value }))}
                   />
                 </label>
               </div>
             ) : (
-              <div className="composer-section field-grid two-up version-grid">
+              <div className="composer-section version-stack">
                 <label className="field field-version field-version-before">
-                  <span className="version-label version-label-before">Before · original policy</span>
-                  <textarea rows="12" value={form.previousText} onChange={(event) => setForm((current) => ({ ...current, previousText: event.target.value }))} />
+                  <span className="version-label version-label-before">Policy text</span>
+                  <textarea
+                    rows="14"
+                    value={form.previousText}
+                    placeholder="Paste terms, privacy policy, or vendor contract language here."
+                    onChange={(event) => setForm((current) => ({ ...current, previousText: event.target.value }))}
+                  />
                 </label>
-                <label className="field field-version field-version-after">
-                  <span className="version-label version-label-after">After · updated policy</span>
-                  <textarea rows="12" value={form.currentText} onChange={(event) => setForm((current) => ({ ...current, currentText: event.target.value }))} />
+                <label className="field field-version field-version-after field-version-optional">
+                  <span className="version-label version-label-after">Compare against (optional)</span>
+                  <textarea
+                    rows="8"
+                    value={form.currentText}
+                    placeholder="Optional — paste an updated version to compare clause by clause."
+                    onChange={(event) => setForm((current) => ({ ...current, currentText: event.target.value }))}
+                  />
                 </label>
               </div>
             )}
 
             <div className="composer-section toolbar">
-              <button className="primary-button" disabled={loading}>{loading ? 'Analyzing…' : 'Run comparison'}</button>
+              <button className="primary-button" disabled={loading || !hasPolicyInput(form)}>
+                {loading ? 'Analyzing…' : isComparison ? 'Run comparison' : 'Analyze policy'}
+              </button>
               <button
                 type="button"
                 className="secondary-button"
@@ -813,7 +861,7 @@ function ReportsPage({ history, setRoute, setReportId }) {
           >
             <div>
               <strong>{item.headline}</strong>
-              <span>{item.sources.previous.title} → {item.sources.current.title}</span>
+              <span>{formatReportSources(item)}</span>
             </div>
             <div>
               <strong>{item.metrics.highRisk}</strong>
@@ -862,9 +910,7 @@ function ReportDetail({ report, filters, setFilters, copied, copyShareLink }) {
         <div>
           <p className="section-label">Report detail</p>
           <h1 className="report-title">{report.overview.headline}</h1>
-          <p className="muted">
-            {report.sources.previous.title} → {report.sources.current.title}
-          </p>
+          <p className="muted">{formatReportSources(report)}</p>
         </div>
         <div className="report-meta-grid">
           <div className="metric-tile">
@@ -953,6 +999,7 @@ function ReportDetail({ report, filters, setFilters, copied, copyShareLink }) {
             </select>
             <select value={filters.changeType} onChange={(event) => setFilters((current) => ({ ...current, changeType: event.target.value }))}>
               <option value="all">All change types</option>
+              <option value="review">Flagged clauses</option>
               <option value="modified">Modified</option>
               <option value="added">Added</option>
               <option value="removed">Removed</option>
@@ -977,14 +1024,18 @@ function ReportDetail({ report, filters, setFilters, copied, copyShareLink }) {
                   <span key={tag} className="tag">{tag}</span>
                 ))}
               </div>
-              <div className="diff-columns">
-                <div className="diff-pane diff-pane-before">
-                  <span className="diff-pane-label diff-pane-label-before">Before</span>
-                  <pre>{change.beforeText || 'No matching clause in the earlier version.'}</pre>
-                </div>
-                <div className="diff-arrow" aria-hidden="true">→</div>
+              <div className={classNames('diff-columns', change.changeType === 'review' && 'diff-columns-single')}>
+                {change.changeType !== 'review' && (
+                  <div className="diff-pane diff-pane-before">
+                    <span className="diff-pane-label diff-pane-label-before">Before</span>
+                    <pre>{change.beforeText || 'No matching clause in the earlier version.'}</pre>
+                  </div>
+                )}
+                {change.changeType !== 'review' && <div className="diff-arrow" aria-hidden="true">→</div>}
                 <div className="diff-pane diff-pane-after">
-                  <span className="diff-pane-label diff-pane-label-after">After</span>
+                  <span className="diff-pane-label diff-pane-label-after">
+                    {change.changeType === 'review' ? 'Clause text' : 'After'}
+                  </span>
                   <pre>{change.afterText || 'No matching clause in the updated version.'}</pre>
                 </div>
               </div>
@@ -1166,6 +1217,11 @@ export default function App() {
 
   async function handleCompare(event) {
     event.preventDefault();
+    if (!hasPolicyInput(form)) {
+      setError('Paste policy text or enter a URL to analyze.');
+      return;
+    }
+
     setLoading(true);
     setError('');
     setCopied(false);

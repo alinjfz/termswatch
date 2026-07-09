@@ -41,12 +41,30 @@ app.use(
 app.use(express.json({ limit: '2mb' }));
 app.use(attachCurrentUser);
 
-const CompareSchema = z.object({
-  mode: z.enum(['url', 'text']),
-  model: z.string().optional(),
-  previous: z.object({ kind: z.enum(['url', 'text']), value: z.string().min(1) }),
-  current: z.object({ kind: z.enum(['url', 'text']), value: z.string().min(1) }),
-});
+const CompareSchema = z
+  .object({
+    mode: z.enum(['url', 'text']),
+    model: z.string().optional(),
+    previous: z.object({ kind: z.enum(['url', 'text']), value: z.string() }),
+    current: z.object({ kind: z.enum(['url', 'text']), value: z.string() }),
+  })
+  .refine((payload) => payload.previous.value.trim() || payload.current.value.trim(), {
+    message: 'Provide policy text or a URL to analyze.',
+  });
+
+async function resolveOptionalSource(source, label) {
+  if (!source.value.trim()) {
+    return {
+      label,
+      mode: source.kind,
+      value: '',
+      content: '',
+      title: 'Not provided',
+    };
+  }
+
+  return resolveSource({ ...source, label });
+}
 const SignupSchema = z.object({
   name: z.string().trim().min(2),
   email: z.string().email(),
@@ -195,8 +213,8 @@ app.get('/api/export/:id', requireAuth, async (req, res) => {
 app.post('/api/compare', requireAuth, async (req, res) => {
   try {
     const payload = CompareSchema.parse(req.body);
-    const previous = await resolveSource({ ...payload.previous, label: 'Original policy' });
-    const current = await resolveSource({ ...payload.current, label: 'Updated policy' });
+    const previous = await resolveOptionalSource(payload.previous, 'Original policy');
+    const current = await resolveOptionalSource(payload.current, 'Updated policy');
     const analysis = await analyzeDocuments({
       previousText: previous.content,
       currentText: current.content,

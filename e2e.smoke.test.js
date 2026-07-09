@@ -107,15 +107,14 @@ test('e2e smoke: signup, compare, history, export, and landing build', async () 
       body: JSON.stringify({
         mode: 'text',
         model: 'default',
-        previous: { kind: 'text', value: 'We share data with service providers only.' },
-        current: { kind: 'text', value: 'We may share personal information with affiliates and partners.' },
+        previous: { kind: 'text', value: 'We may share personal information with affiliates and advertising partners.' },
+        current: { kind: 'text', value: '' },
       }),
     });
 
-    assert.equal(compare.response.status, 200, 'compare should succeed');
-    assert.ok(compare.json.report?.id, 'compare should return report id');
-    assert.ok(compare.json.report?.overview, 'compare should return overview');
-    assert.ok(Array.isArray(compare.json.report?.changes), 'compare should return changes');
+    assert.equal(compare.response.status, 200, 'single-text compare should succeed');
+    assert.equal(compare.json.report?.overview?.comparisonKind, 'single');
+    assert.ok(compare.json.report?.changes?.length > 0, 'single-text compare should return flagged clauses');
 
     const reportId = compare.json.report.id;
 
