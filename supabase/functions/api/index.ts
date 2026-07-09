@@ -93,8 +93,9 @@ Deno.serve(async (req: Request) => {
 
   try {
     const url = new URL(req.url);
-    // Strip /api prefix from path
-    const path = url.pathname.replace(/^\/api/, "");
+    // Strip everything up to and including /api from the path
+    // e.g. /functions/v1/api/auth/me → /auth/me
+    const path = url.pathname.replace(/^.*\/api/, "") || "/";
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -117,8 +118,8 @@ Deno.serve(async (req: Request) => {
     const user = await getAuthedUser(req, supabase);
     if (!user) return err("Authentication required.", 401);
 
-    // GET /me — dashboard stats
-    if (path === "/me") {
+    // GET /auth/me — dashboard stats
+    if (path === "/auth/me") {
       const { data, error } = await supabase.from("reports").select("metrics").eq("user_id", user.id);
       if (error) return err(error.message, 500);
       const reports = data || [];
