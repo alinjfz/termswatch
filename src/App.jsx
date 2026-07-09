@@ -114,6 +114,10 @@ function workspaceStats(stats, history) {
   ];
 }
 
+function BrandMark() {
+  return <img className="brand-mark" src="/termswatch-mark.svg" alt="" aria-hidden="true" />;
+}
+
 async function apiFetch(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, {
     credentials: 'include',
@@ -349,7 +353,7 @@ function LandingPage({ authMode, setAuthMode, authForm, updateAuthField, handleA
 
       <header className="landing-topbar">
         <div className="brand-lockup">
-          <span className="brand-mark">TW</span>
+          <BrandMark />
           <div>
             <strong>TermsWatch</strong>
             <p>Policy change intelligence</p>
@@ -500,7 +504,7 @@ function LandingPage({ authMode, setAuthMode, authForm, updateAuthField, handleA
 
       <footer className="landing-footer">
         <div className="brand-lockup compact">
-          <span className="brand-mark">TW</span>
+          <BrandMark />
           <div>
             <strong>TermsWatch</strong>
             <p>Policy change intelligence</p>
@@ -1320,7 +1324,7 @@ export default function App() {
 
       <aside className="sidebar glass-card">
         <div className="brand-lockup compact">
-          <span className="brand-mark">TW</span>
+          <BrandMark />
           <div>
             <strong>TermsWatch</strong>
             <p>{user?.name}</p>

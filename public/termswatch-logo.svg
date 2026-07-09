@@ -1,0 +1,45 @@
+<svg width="420" height="96" viewBox="0 0 420 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="logoBg" x1="14" y1="14" x2="82" y2="82" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1F4D4A" />
+      <stop offset="1" stop-color="#A67C52" />
+    </linearGradient>
+    <linearGradient id="logoLine" x1="32" y1="26" x2="67" y2="67" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF8EE" />
+      <stop offset="1" stop-color="#F4E6D3" />
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="80" height="80" rx="24" fill="url(#logoBg)" />
+  <path
+    d="M35 24C35 21.7909 36.7909 20 39 20H53.3431C54.4039 20 55.4214 20.4214 56.1716 21.1716L63.8284 28.8284C64.5786 29.5786 65 30.5961 65 31.6569V60C65 62.2091 63.2091 64 61 64H39C36.7909 64 35 62.2091 35 60V24Z"
+    fill="url(#logoLine)"
+    fill-opacity="0.18"
+  />
+  <path
+    d="M53 20V29C53 31.2091 54.7909 33 57 33H65"
+    stroke="url(#logoLine)"
+    stroke-width="3"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M31 60.5C34 55.8333 38.5 53.5 44.5 53.5C50.5 53.5 55 55.8333 58 60.5"
+    stroke="url(#logoLine)"
+    stroke-width="4"
+    stroke-linecap="round"
+  />
+  <path
+    d="M39 42L45 55L51 35L57 48H65"
+    stroke="url(#logoLine)"
+    stroke-width="4"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <circle cx="65" cy="48" r="4" fill="#FDF5EA" />
+  <text x="112" y="46" fill="#1C1917" font-family="Newsreader, Georgia, serif" font-size="34" font-weight="600" letter-spacing="-0.04em">
+    TermsWatch
+  </text>
+  <text x="113" y="68" fill="#6B6560" font-family="Instrument Sans, 'Segoe UI', sans-serif" font-size="13" font-weight="500" letter-spacing="0.14em">
+    POLICY CHANGE INTELLIGENCE
+  </text>
+</svg>
