@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 const DEFAULT_MODEL = 'openrouter/free';
 const API_BASE = import.meta.env.DEV ? 'http://127.0.0.1:8787' : '';
@@ -78,10 +79,6 @@ function workspaceStats(stats, history) {
     { label: 'High-risk flags', value: stats?.highRiskFlags ?? 0 },
     { label: 'Changed clauses', value: stats?.totalChangedClauses ?? 0 },
   ];
-}
-
-function sampleModeLabel(mode) {
-  return mode === 'text' ? 'Text mode' : 'URL mode';
 }
 
 async function apiFetch(path, options = {}) {
@@ -166,7 +163,7 @@ function AuthModal({
     return null;
   }
 
-  return (
+  return createPortal(
     <div className="auth-modal-root" role="presentation" onClick={onClose}>
       <div
         className="auth-modal"
@@ -179,64 +176,67 @@ function AuthModal({
           ×
         </button>
 
-        <div className="auth-card-intro">
-          <p className="section-label">{authMode === 'signup' ? 'Get started' : 'Welcome back'}</p>
-          <h2 id="auth-modal-title">{authMode === 'signup' ? 'Open your workspace' : 'Sign in to your workspace'}</h2>
-          <p className="auth-copy">Private report history, exports, and direct report links — all in one place.</p>
-        </div>
+        <div className="auth-modal-body">
+          <div className="auth-card-intro">
+            <p className="section-label">{authMode === 'signup' ? 'Get started' : 'Welcome back'}</p>
+            <h2 id="auth-modal-title">{authMode === 'signup' ? 'Open your workspace' : 'Sign in to your workspace'}</h2>
+            <p className="auth-copy">Private report history, exports, and direct report links — all in one place.</p>
+          </div>
 
-        <form className="auth-form" onSubmit={handleAuthSubmit}>
-          {authMode === 'signup' && (
+          <form className="auth-form" onSubmit={handleAuthSubmit}>
+            {authMode === 'signup' && (
+              <label className="field">
+                <span>Full name</span>
+                <input
+                  value={authForm.name}
+                  onChange={(event) => updateAuthField('name', event.target.value)}
+                  placeholder="Jordan Lee"
+                  autoComplete="name"
+                />
+              </label>
+            )}
             <label className="field">
-              <span>Full name</span>
+              <span>Email</span>
               <input
-                value={authForm.name}
-                onChange={(event) => updateAuthField('name', event.target.value)}
-                placeholder="Jordan Lee"
-                autoComplete="name"
+                type="email"
+                value={authForm.email}
+                onChange={(event) => updateAuthField('email', event.target.value)}
+                placeholder="you@company.com"
+                autoComplete="email"
+                autoCapitalize="none"
+                spellCheck={false}
               />
             </label>
-          )}
-          <label className="field">
-            <span>Email</span>
-            <input
-              type="email"
-              value={authForm.email}
-              onChange={(event) => updateAuthField('email', event.target.value)}
-              placeholder="you@company.com"
-              autoComplete="email"
-              autoCapitalize="none"
-              spellCheck={false}
-            />
-          </label>
-          <label className="field">
-            <span>Password</span>
-            <input
-              type="password"
-              value={authForm.password}
-              onChange={(event) => updateAuthField('password', event.target.value)}
-              placeholder="At least 8 characters"
-              autoComplete={authMode === 'signup' ? 'new-password' : 'current-password'}
-            />
-          </label>
-          <button className="primary-button auth-button" disabled={authLoading}>
-            {authLoading ? 'Working…' : authMode === 'signup' ? 'Create account' : 'Log in'}
-          </button>
-          {authError && <div className="error-banner">{authError}</div>}
-        </form>
+            <label className="field">
+              <span>Password</span>
+              <input
+                type="password"
+                value={authForm.password}
+                onChange={(event) => updateAuthField('password', event.target.value)}
+                placeholder="At least 8 characters"
+                autoComplete={authMode === 'signup' ? 'new-password' : 'current-password'}
+              />
+            </label>
+            <button className="primary-button auth-button" disabled={authLoading}>
+              {authLoading ? 'Working…' : authMode === 'signup' ? 'Create account' : 'Log in'}
+            </button>
+            {authError && <div className="error-banner">{authError}</div>}
+          </form>
 
-        <div className="auth-footer">
-          <span>{authMode === 'signup' ? 'Already have an account?' : 'Need an account?'}</span>
-          <button
-            type="button"
-            className="inline-button"
-            onClick={() => setAuthMode((current) => (current === 'signup' ? 'login' : 'signup'))}
-          >
-            {authMode === 'signup' ? 'Log in' : 'Sign up'}
-          </button>
+          <div className="auth-footer">
+            <span>{authMode === 'signup' ? 'Already have an account?' : 'Need an account?'}</span>
+            <button
+              type="button"
+              className="inline-button"
+              onClick={() => setAuthMode((current) => (current === 'signup' ? 'login' : 'signup'))}
+            >
+              {authMode === 'signup' ? 'Log in' : 'Sign up'}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -275,11 +275,12 @@ function LandingVisual() {
   );
 }
 
-function LandingPage({ authMode, setAuthMode, authForm, updateAuthField, handleAuthSubmit, authLoading, authError }) {
+function LandingPage({ authMode, setAuthMode, authForm, updateAuthField, handleAuthSubmit, authLoading, authError, setAuthError }) {
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
   function openAuthModal(mode = 'signup') {
     setAuthMode(mode);
+    setAuthError('');
     setAuthModalOpen(true);
   }
 
@@ -630,161 +631,159 @@ function ComparisonWorkspace({
   handleCompare,
   report,
   setRoute,
+  aiStatus,
 }) {
   const featuredSamples = samples.slice(0, 3);
 
   return (
-    <section className="workspace-grid">
-      <form className="glass-card composer-card" onSubmit={handleCompare}>
-        <div className="card-heading">
+    <section className="workspace-page">
+      <div className="workspace-page-head">
+        <div>
+          <p className="section-label">New comparison</p>
+          <h1 className="workspace-title">Run a policy review</h1>
+          <p className="hero-lead">Bring in two versions by URL or pasted text. TermsWatch extracts readable content, compares clauses, and ranks material risk.</p>
+        </div>
+        <div className={classNames('ai-status-card', aiStatus?.configured ? 'is-live' : 'is-fallback')}>
+          <span className="status-dot" />
           <div>
-            <p className="section-label">Comparison engine</p>
-            <h2>Run a new review</h2>
-          </div>
-          <div className="mode-toggle">
-            <button
-              type="button"
-              className={classNames('toggle-chip', form.mode === 'url' && 'is-selected')}
-              onClick={() => setForm((current) => ({ ...current, mode: 'url' }))}
-            >
-              URLs
-            </button>
-            <button
-              type="button"
-              className={classNames('toggle-chip', form.mode === 'text' && 'is-selected')}
-              onClick={() => setForm((current) => ({ ...current, mode: 'text' }))}
-            >
-              Pasted text
-            </button>
+            <strong>{aiStatus?.configured ? `Live AI · ${aiStatus.provider}` : 'Deterministic mode'}</strong>
+            <p>{aiStatus?.message || 'Checking model configuration…'}</p>
           </div>
         </div>
+      </div>
 
-        <div className="workspace-intro">
-          <div>
-            <p className="section-label">Recommended testing</p>
-            <h3>Load a sample to check the full flow before using live inputs.</h3>
-          </div>
-          <p className="muted">
-            The built-in examples make it easy to confirm URL mode, text mode, report saving, and the model-enhanced summary layer.
-          </p>
-        </div>
-
-        <div className="sample-row">
-          {featuredSamples.map((sample) => (
-            <button key={sample.id} type="button" className="sample-card sample-card-rich" onClick={() => loadSample(sample.id)}>
-              <div className="sample-card-topline">
-                <strong>{sample.name}</strong>
-                <span className="pill subtle-pill">{sampleModeLabel(sample.recommendedMode)}</span>
-              </div>
-              <span>{sample.description}</span>
-              <div className="sample-card-meta">
-                <span>{sample.category}</span>
-                <span>{sample.expectedOutcome}</span>
-              </div>
-            </button>
-          ))}
-        </div>
-
-        <label className="field">
-          <span>Model</span>
-          <input value={form.model} onChange={(event) => setForm((current) => ({ ...current, model: event.target.value }))} />
-        </label>
-
-        {form.mode === 'url' ? (
-          <div className="field-grid">
-            <label className="field">
-              <span>Original policy URL</span>
-              <input
-                type="url"
-                value={form.previousUrl}
-                placeholder="https://example.com/privacy-v1"
-                onChange={(event) => setForm((current) => ({ ...current, previousUrl: event.target.value }))}
-              />
-            </label>
-            <label className="field">
-              <span>Updated policy URL</span>
-              <input
-                type="url"
-                value={form.currentUrl}
-                placeholder="https://example.com/privacy-v2"
-                onChange={(event) => setForm((current) => ({ ...current, currentUrl: event.target.value }))}
-              />
-            </label>
-          </div>
-        ) : (
-          <div className="field-grid two-up">
-            <label className="field">
-              <span>Original policy text</span>
-              <textarea rows="12" value={form.previousText} onChange={(event) => setForm((current) => ({ ...current, previousText: event.target.value }))} />
-            </label>
-            <label className="field">
-              <span>Updated policy text</span>
-              <textarea rows="12" value={form.currentText} onChange={(event) => setForm((current) => ({ ...current, currentText: event.target.value }))} />
-            </label>
-          </div>
-        )}
-
-        <div className="toolbar">
-          <button className="primary-button" disabled={loading}>{loading ? 'Analyzing…' : 'Run comparison'}</button>
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={() =>
-              setForm((current) => ({
-                ...current,
-                previousUrl: current.currentUrl,
-                currentUrl: current.previousUrl,
-                previousText: current.currentText,
-                currentText: current.previousText,
-              }))
-            }
-          >
-            Swap versions
-          </button>
-          {report?.id && (
-            <button type="button" className="secondary-button" onClick={() => setRoute(`/app/reports/${report.id}`)}>
-              Open latest report
-            </button>
-          )}
-        </div>
-        <p className="muted small">Live fetch when available. Text fallback when a site blocks access or extraction is noisy.</p>
-        {error && <div className="error-banner">{error}</div>}
-      </form>
-
-      <section className="glass-card run-card">
-        <div className="card-heading">
-          <div>
-            <p className="section-label">AI workflow</p>
-            <h2>Pipeline status</h2>
-          </div>
-          <span className="pill">{loading ? 'Working' : report ? 'Ready' : 'Idle'}</span>
-        </div>
-        <ol className="run-log">
-          {(report?.runLog || [
-            { title: 'Awaiting input', detail: 'Load a sample, enter URLs, or paste text.' },
-            { title: 'Private by default', detail: 'Comparisons and history are scoped to your authenticated workspace.' },
-            { title: 'Review-ready output', detail: 'Summaries, risk tags, filters, and export controls appear after each run.' },
-          ]).map((item, index) => (
-            <li key={item.title}>
-              <span>{String(index + 1).padStart(2, '0')}</span>
+      <div className="workspace-grid">
+        <form className="glass-card composer-card" onSubmit={handleCompare}>
+          <div className="composer-stack">
+            <div className="card-heading composer-heading">
               <div>
-                <strong>{item.title}</strong>
-                <p>{item.detail}</p>
+                <p className="section-label">Comparison engine</p>
+                <h2>Configure your inputs</h2>
               </div>
-            </li>
-          ))}
-        </ol>
-        <div className="workspace-test-grid">
-          <div className="workspace-test-card">
-            <strong>What to test</strong>
-            <p>Confirm the report opens automatically, filters work, and markdown export downloads cleanly.</p>
+              <div className="mode-toggle">
+                <button
+                  type="button"
+                  className={classNames('toggle-chip', form.mode === 'url' && 'is-selected')}
+                  onClick={() => setForm((current) => ({ ...current, mode: 'url' }))}
+                >
+                  URLs
+                </button>
+                <button
+                  type="button"
+                  className={classNames('toggle-chip', form.mode === 'text' && 'is-selected')}
+                  onClick={() => setForm((current) => ({ ...current, mode: 'text' }))}
+                >
+                  Pasted text
+                </button>
+              </div>
+            </div>
+
+            <div className="composer-section">
+              <p className="section-label">Quick start samples</p>
+              <div className="sample-row">
+                {featuredSamples.map((sample) => (
+                  <button key={sample.id} type="button" className="sample-card" onClick={() => loadSample(sample.id)}>
+                    <strong>{sample.name}</strong>
+                    <span>{sample.description}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="composer-section">
+              <label className="field">
+                <span>Model</span>
+                <input value={form.model} onChange={(event) => setForm((current) => ({ ...current, model: event.target.value }))} />
+              </label>
+            </div>
+
+            {form.mode === 'url' ? (
+              <div className="composer-section field-grid version-grid">
+                <label className="field field-version field-version-before">
+                  <span className="version-label version-label-before">Before · original URL</span>
+                  <input
+                    type="url"
+                    value={form.previousUrl}
+                    placeholder="https://example.com/privacy-v1"
+                    onChange={(event) => setForm((current) => ({ ...current, previousUrl: event.target.value }))}
+                  />
+                </label>
+                <label className="field field-version field-version-after">
+                  <span className="version-label version-label-after">After · updated URL</span>
+                  <input
+                    type="url"
+                    value={form.currentUrl}
+                    placeholder="https://example.com/privacy-v2"
+                    onChange={(event) => setForm((current) => ({ ...current, currentUrl: event.target.value }))}
+                  />
+                </label>
+              </div>
+            ) : (
+              <div className="composer-section field-grid two-up version-grid">
+                <label className="field field-version field-version-before">
+                  <span className="version-label version-label-before">Before · original policy</span>
+                  <textarea rows="12" value={form.previousText} onChange={(event) => setForm((current) => ({ ...current, previousText: event.target.value }))} />
+                </label>
+                <label className="field field-version field-version-after">
+                  <span className="version-label version-label-after">After · updated policy</span>
+                  <textarea rows="12" value={form.currentText} onChange={(event) => setForm((current) => ({ ...current, currentText: event.target.value }))} />
+                </label>
+              </div>
+            )}
+
+            <div className="composer-section toolbar">
+              <button className="primary-button" disabled={loading}>{loading ? 'Analyzing…' : 'Run comparison'}</button>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() =>
+                  setForm((current) => ({
+                    ...current,
+                    previousUrl: current.currentUrl,
+                    currentUrl: current.previousUrl,
+                    previousText: current.currentText,
+                    currentText: current.previousText,
+                  }))
+                }
+              >
+                Swap versions
+              </button>
+              {report?.id && (
+                <button type="button" className="secondary-button" onClick={() => setRoute(`/app/reports/${report.id}`)}>
+                  Open latest report
+                </button>
+              )}
+            </div>
+            <p className="muted small composer-footnote">Server-side URL fetch when available. Deterministic comparison remains available if model enhancement fails.</p>
+            {error && <div className="error-banner">{error}</div>}
           </div>
-          <div className="workspace-test-card">
-            <strong>AI signal</strong>
-            <p>Look for polished headlines, stronger why-it-matters bullets, and clearer clause summaries than the raw deterministic baseline.</p>
+        </form>
+
+        <section className="glass-card run-card">
+          <div className="card-heading">
+            <div>
+              <p className="section-label">Pipeline</p>
+              <h2>Run status</h2>
+            </div>
+            <span className="pill">{loading ? 'Working' : report ? 'Ready' : 'Idle'}</span>
           </div>
-        </div>
-      </section>
+          <ol className="run-log">
+            {(report?.runLog || [
+              { title: 'Awaiting input', detail: 'Enter URLs or paste both policy versions.' },
+              { title: 'Clause diff', detail: 'TermsWatch segments text and detects added, removed, and modified clauses.' },
+              { title: 'Risk ranking', detail: aiStatus?.configured ? 'Model reasoning enhances summaries when configured.' : 'Add OPENROUTER_API_KEY to .env for live model reasoning.' },
+            ]).map((item, index) => (
+              <li key={item.title}>
+                <span>{String(index + 1).padStart(2, '0')}</span>
+                <div>
+                  <strong>{item.title}</strong>
+                  <p>{item.detail}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+      </div>
     </section>
   );
 }
@@ -975,12 +974,13 @@ function ReportDetail({ report, filters, setFilters, copied, copyShareLink }) {
                 ))}
               </div>
               <div className="diff-columns">
-                <div className="diff-pane">
-                  <span>Before</span>
+                <div className="diff-pane diff-pane-before">
+                  <span className="diff-pane-label diff-pane-label-before">Before</span>
                   <pre>{change.beforeText || 'No matching clause in the earlier version.'}</pre>
                 </div>
-                <div className="diff-pane">
-                  <span>After</span>
+                <div className="diff-arrow" aria-hidden="true">→</div>
+                <div className="diff-pane diff-pane-after">
+                  <span className="diff-pane-label diff-pane-label-after">After</span>
                   <pre>{change.afterText || 'No matching clause in the updated version.'}</pre>
                 </div>
               </div>
@@ -993,7 +993,7 @@ function ReportDetail({ report, filters, setFilters, copied, copyShareLink }) {
   );
 }
 
-function SettingsPage({ user, form }) {
+function SettingsPage({ user, form, aiStatus }) {
   return (
     <section className="dashboard-grid">
       <article className="glass-card dashboard-panel">
@@ -1012,9 +1012,9 @@ function SettingsPage({ user, form }) {
         <h2>Current processing defaults</h2>
         <div className="settings-list">
           <div><strong>Default model</strong><span>{form.model}</span></div>
+          <div><strong>AI provider</strong><span>{aiStatus?.configured ? aiStatus.provider : 'Not configured'}</span></div>
+          <div><strong>AI status</strong><span>{aiStatus?.message || 'Unknown'}</span></div>
           <div><strong>Input modes</strong><span>URL and pasted text</span></div>
-          <div><strong>Provider path</strong><span>OpenRouter free by default with provider fallback</span></div>
-          <div><strong>Report export</strong><span>Markdown export enabled</span></div>
         </div>
       </article>
 
@@ -1048,11 +1048,13 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [aiStatus, setAiStatus] = useState(null);
 
   useEffect(() => {
     const onPopState = () => setLocationState(getLocationState());
     window.addEventListener('popstate', onPopState);
     loadPublicSamples();
+    loadAIStatus();
     bootstrapAuth();
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
@@ -1084,6 +1086,15 @@ export default function App() {
   async function loadPublicSamples() {
     const samplesJson = await apiFetch('/api/samples', { headers: {} });
     setSamples(samplesJson.samples || []);
+  }
+
+  async function loadAIStatus() {
+    try {
+      const json = await apiFetch('/api/health', { headers: {} });
+      setAiStatus(json.ai || null);
+    } catch {
+      setAiStatus(null);
+    }
   }
 
   async function loadDashboard() {
@@ -1215,6 +1226,7 @@ export default function App() {
         handleAuthSubmit={handleAuthSubmit}
         authLoading={authLoading}
         authError={authError}
+        setAuthError={setAuthError}
       />
     );
   }
@@ -1241,6 +1253,7 @@ export default function App() {
         handleCompare={handleCompare}
         report={report}
         setRoute={navigateTo}
+        aiStatus={aiStatus}
       />
     );
   } else if (currentPath === '/app/reports') {
@@ -1248,7 +1261,7 @@ export default function App() {
   } else if (currentReportIdFromPath(currentPath)) {
     content = <ReportDetail report={report} filters={filters} setFilters={setFilters} copied={copied} copyShareLink={copyShareLink} />;
   } else if (currentPath === '/app/settings') {
-    content = <SettingsPage user={user} form={form} />;
+    content = <SettingsPage user={user} form={form} aiStatus={aiStatus} />;
   }
 
   return (

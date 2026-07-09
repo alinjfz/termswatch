@@ -2,6 +2,10 @@ import cors from 'cors';
 import express from 'express';
 import { z } from 'zod';
 
+import { loadEnvFile } from './env.js';
+
+loadEnvFile();
+
 import {
   attachCurrentUser,
   clearSession,
@@ -11,7 +15,7 @@ import {
   writeSessionCookie,
 } from './auth.js';
 import { resolveSource } from './extract.js';
-import { analyzeDocuments } from './llm.js';
+import { analyzeDocuments, getAIProviderStatus } from './llm.js';
 import { getSampleById, samplePolicies } from './samples.js';
 import { getReport, getUserDashboardStats, listReports, saveReport } from './storage.js';
 
@@ -66,7 +70,7 @@ function compactReport(report) {
 }
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true });
+  res.json({ ok: true, ai: getAIProviderStatus() });
 });
 
 app.get('/api/auth/me', async (req, res) => {

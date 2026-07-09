@@ -1,8 +1,11 @@
+import { loadEnvFile } from './env.js';
 import OpenAI from 'openai';
 import { z } from 'zod';
 import { zodTextFormat } from 'openai/helpers/zod';
 
 import { runDeterministicAnalysis } from '../shared/analysis.js';
+
+loadEnvFile();
 
 const ChangeSchema = z.object({
   id: z.string(),
@@ -20,6 +23,9 @@ const ComparisonSchema = z.object({
   whyMatters: z.array(z.string()).min(2).max(5),
   changeOverrides: z.array(ChangeSchema),
 });
+
+const ANALYST_INSTRUCTIONS =
+  'You are a policy-comparison analyst. Improve the baseline change review, keep the disclaimer stance informational only, and do not invent changes that are not grounded in the provided text.';
 
 function getLLMProviderConfig() {
   if (process.env.OPENROUTER_API_KEY) {
@@ -53,7 +59,26 @@ function getLLMProviderConfig() {
   return null;
 }
 
-function buildRunLog(mode, metrics, modelMode) {
+export function getAIProviderStatus() {
+  const config = getLLMProviderConfig();
+  if (!config) {
+    return {
+      configured: false,
+      provider: null,
+      defaultModel: 'openrouter/free',
+      message: 'No OPENROUTER_API_KEY or OPENAI_API_KEY found. Add one to .env to enable live model reasoning.',
+    };
+  }
+
+  return {
+    configured: true,
+    provider: config.provider,
+    defaultModel: 'openrouter/free',
+    message: `Live model reasoning is available via ${config.provider}.`,
+  };
+}
+
+function buildRunLog(mode, metrics, modelMode, enhancementNote) {
   return [
     {
       title: 'Sources ingested',
@@ -73,7 +98,7 @@ function buildRunLog(mode, metrics, modelMode) {
     },
     {
       title: 'Summary generated',
-      detail: 'Prepared executive takeaways, why-it-matters notes, and review guidance.',
+      detail: enhancementNote || 'Prepared executive takeaways, why-it-matters notes, and review guidance.',
     },
   ];
 }
@@ -95,39 +120,29 @@ function mergeChanges(baseChanges, overrides) {
   });
 }
 
-async function runOpenAIEnhancement({ previousText, currentText, baseline, model }) {
-  const config = getLLMProviderConfig();
-  if (!config) return null;
+function buildEnhancementPayload(previousText, currentText, baseline) {
+  return JSON.stringify(
+    {
+      previousText: previousText.slice(0, 16000),
+      currentText: currentText.slice(0, 16000),
+      baseline,
+    },
+    null,
+    2,
+  );
+}
 
+async function runStructuredResponsesEnhancement({ config, previousText, currentText, baseline, model }) {
   const response = await config.client.responses.parse({
     model,
     input: [
       {
         role: 'system',
-        content: [
-          {
-            type: 'input_text',
-            text:
-              'You are a policy-comparison analyst. Improve the baseline change review, keep the disclaimer stance informational only, and do not invent changes that are not grounded in the provided text.',
-          },
-        ],
+        content: [{ type: 'input_text', text: ANALYST_INSTRUCTIONS }],
       },
       {
         role: 'user',
-        content: [
-          {
-            type: 'input_text',
-            text: JSON.stringify(
-              {
-                previousText: previousText.slice(0, 16000),
-                currentText: currentText.slice(0, 16000),
-                baseline,
-              },
-              null,
-              2,
-            ),
-          },
-        ],
+        content: [{ type: 'input_text', text: buildEnhancementPayload(previousText, currentText, baseline) }],
       },
     ],
     text: {
@@ -135,29 +150,112 @@ async function runOpenAIEnhancement({ previousText, currentText, baseline, model
     },
   });
 
-  return {
-    parsed: response.output_parsed,
-    provider: config.provider,
-  };
+  if (!response.output_parsed) {
+    throw new Error('Structured model response did not include parsed output.');
+  }
+
+  return response.output_parsed;
+}
+
+async function runChatCompletionEnhancement({ config, previousText, currentText, baseline, model }) {
+  const response = await config.client.chat.completions.create({
+    model,
+    temperature: 0.2,
+    response_format: { type: 'json_object' },
+    messages: [
+      {
+        role: 'system',
+        content: `${ANALYST_INSTRUCTIONS} Return only valid JSON with keys: headline, confidence, summaryBullets, whyMatters, changeOverrides.`,
+      },
+      {
+        role: 'user',
+        content: buildEnhancementPayload(previousText, currentText, baseline),
+      },
+    ],
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    throw new Error('Chat completion returned an empty response.');
+  }
+
+  const parsed = ComparisonSchema.parse(JSON.parse(content));
+  return parsed;
+}
+
+async function runLLMEnhancement({ previousText, currentText, baseline, model }) {
+  const config = getLLMProviderConfig();
+  if (!config) {
+    return null;
+  }
+
+  let lastError = null;
+
+  try {
+    const parsed = await runStructuredResponsesEnhancement({
+      config,
+      previousText,
+      currentText,
+      baseline,
+      model,
+    });
+    return { parsed, provider: config.provider };
+  } catch (error) {
+    lastError = error;
+  }
+
+  try {
+    const parsed = await runChatCompletionEnhancement({
+      config,
+      previousText,
+      currentText,
+      baseline,
+      model,
+    });
+    return { parsed, provider: config.provider };
+  } catch (error) {
+    lastError = error;
+    throw lastError instanceof Error ? lastError : new Error('Model enhancement failed.');
+  }
+}
+
+function applyFallbackMessaging(baseline, reason) {
+  baseline.overview.summaryBullets = [
+    'Model enhancement was unavailable, so TermsWatch used the built-in comparison engine.',
+    ...baseline.overview.summaryBullets,
+  ].slice(0, 5);
+  baseline.overview.whyMatters = [
+    reason,
+    ...baseline.overview.whyMatters,
+  ].slice(0, 5);
 }
 
 export async function analyzeDocuments({ previousText, currentText, mode, model = 'openrouter/free' }) {
   const baseline = runDeterministicAnalysis(previousText, currentText);
   let enhanced = null;
   let modelMode = 'deterministic fallback';
+  let enhancementNote = 'Prepared executive takeaways, why-it-matters notes, and review guidance.';
+  const aiStatus = getAIProviderStatus();
 
   try {
-    enhanced = await runOpenAIEnhancement({ previousText, currentText, baseline, model });
-    if (enhanced) modelMode = `LLM enhanced via ${enhanced.provider} (${model})`;
-  } catch {
-    baseline.overview.summaryBullets = [
-      'LLM enhancement was unavailable, so TermsWatch used the built-in comparison engine.',
-      ...baseline.overview.summaryBullets,
-    ].slice(0, 5);
-    baseline.overview.whyMatters = [
-      'Add a valid OPENAI_API_KEY or OPENROUTER_API_KEY to upgrade these outputs with model-based reasoning and richer clause descriptions.',
-      ...baseline.overview.whyMatters,
-    ].slice(0, 5);
+    enhanced = await runLLMEnhancement({ previousText, currentText, baseline, model });
+    if (enhanced) {
+      modelMode = `LLM enhanced via ${enhanced.provider} (${model})`;
+      enhancementNote = `Model reasoning upgraded headlines, summaries, and clause explanations via ${enhanced.provider}.`;
+    } else {
+      applyFallbackMessaging(
+        baseline,
+        aiStatus.message,
+      );
+      enhancementNote = aiStatus.message;
+    }
+  } catch (error) {
+    const reason =
+      error instanceof Error
+        ? `Model enhancement failed (${error.message}). TermsWatch kept the deterministic comparison output.`
+        : 'Model enhancement failed. TermsWatch kept the deterministic comparison output.';
+    applyFallbackMessaging(baseline, reason);
+    enhancementNote = reason;
   }
 
   const parsed = enhanced?.parsed ?? null;
@@ -177,6 +275,6 @@ export async function analyzeDocuments({ previousText, currentText, mode, model 
     overview,
     metrics: baseline.metrics,
     changes,
-    runLog: buildRunLog(mode, baseline.metrics, modelMode),
+    runLog: buildRunLog(mode, baseline.metrics, modelMode, enhancementNote),
   };
 }

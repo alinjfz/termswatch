@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import { getAIProviderStatus } from './server/llm.js';
 import { runDeterministicAnalysis } from './shared/analysis.js';
 
 const fallbackTexts = {
@@ -65,4 +66,33 @@ All disputes will be resolved through binding arbitration and users waive partic
   const result = runDeterministicAnalysis(previous, current);
 
   assert.ok(result.changes.some((change) => change.riskLabel === 'Arbitration or class action'));
+});
+
+test('getAIProviderStatus reports whether model credentials are configured', () => {
+  const originalOpenRouter = process.env.OPENROUTER_API_KEY;
+  const originalOpenAI = process.env.OPENAI_API_KEY;
+
+  delete process.env.OPENROUTER_API_KEY;
+  delete process.env.OPENAI_API_KEY;
+
+  const unconfigured = getAIProviderStatus();
+  assert.equal(unconfigured.configured, false);
+  assert.match(unconfigured.message, /OPENROUTER_API_KEY|OPENAI_API_KEY/);
+
+  process.env.OPENROUTER_API_KEY = 'test-key';
+  const configured = getAIProviderStatus();
+  assert.equal(configured.configured, true);
+  assert.equal(configured.provider, 'OpenRouter');
+
+  if (originalOpenRouter === undefined) {
+    delete process.env.OPENROUTER_API_KEY;
+  } else {
+    process.env.OPENROUTER_API_KEY = originalOpenRouter;
+  }
+
+  if (originalOpenAI === undefined) {
+    delete process.env.OPENAI_API_KEY;
+  } else {
+    process.env.OPENAI_API_KEY = originalOpenAI;
+  }
 });

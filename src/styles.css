@@ -130,7 +130,7 @@ a:focus-visible {
 
 .main-column {
   display: grid;
-  gap: 24px;
+  gap: 32px;
 }
 
 /* Landing backdrop */
@@ -547,37 +547,46 @@ a:focus-visible {
 .auth-modal-root {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: 1000;
   display: grid;
   place-items: center;
   padding: 24px;
-  background: rgba(28, 25, 23, 0.42);
-  backdrop-filter: blur(6px);
+  background: rgba(15, 14, 13, 0.52);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   animation: modal-fade-in 200ms ease;
 }
 
 .auth-modal {
   position: relative;
-  width: min(100%, 460px);
+  width: min(100%, 440px);
   max-height: min(92vh, 720px);
   overflow: auto;
-  padding: 36px;
   border-radius: 28px;
-  border: 1px solid var(--line);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(250, 247, 241, 0.98));
-  box-shadow: var(--shadow-strong);
+  border: 1px solid rgba(28, 25, 23, 0.12);
+  background: #fffdf9;
+  box-shadow: 0 32px 80px rgba(15, 14, 13, 0.22);
   animation: modal-rise 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.auth-modal-body {
+  padding: 36px 32px 32px;
+}
+
+.auth-modal .auth-card-intro {
+  padding-right: 36px;
 }
 
 .auth-modal-close {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
   width: 40px;
   height: 40px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.9);
+  background: #fff;
   color: var(--muted-strong);
   font-size: 1.5rem;
   line-height: 1;
@@ -590,6 +599,16 @@ a:focus-visible {
 .auth-modal-close:hover {
   color: var(--text);
   border-color: var(--line-strong);
+  transform: none;
+}
+
+.auth-modal .auth-button {
+  margin-top: 4px;
+}
+
+.auth-modal .auth-footer {
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 @keyframes modal-fade-in {
@@ -1974,7 +1993,206 @@ textarea {
 }
 
 .main-column {
+  display: grid;
+  gap: 32px;
   padding-top: 8px;
+}
+
+/* Workspace comparison page */
+.workspace-page {
+  display: grid;
+  gap: 32px;
+}
+
+.workspace-page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 28px;
+}
+
+.workspace-title {
+  font-family: var(--serif);
+  font-size: clamp(2.2rem, 3.5vw, 3rem);
+  letter-spacing: -0.03em;
+  margin: 8px 0 12px;
+  line-height: 1.05;
+}
+
+.ai-status-card {
+  min-width: min(100%, 320px);
+  padding: 18px 20px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(255, 253, 249, 0.98), rgba(247, 243, 236, 0.94));
+  display: flex;
+  gap: 12px;
+  align-items: start;
+}
+
+.ai-status-card strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.ai-status-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.ai-status-card.is-live {
+  border-color: rgba(45, 122, 95, 0.24);
+  background: linear-gradient(180deg, rgba(45, 122, 95, 0.08), rgba(255, 253, 249, 0.96));
+}
+
+.ai-status-card.is-fallback {
+  border-color: rgba(184, 134, 58, 0.24);
+  background: linear-gradient(180deg, rgba(184, 134, 58, 0.08), rgba(255, 253, 249, 0.96));
+}
+
+.composer-card {
+  flex: 1.22;
+  padding: 40px 44px;
+}
+
+.run-card {
+  flex: 0.78;
+  padding: 36px 32px;
+}
+
+.composer-stack {
+  display: grid;
+  gap: 28px;
+}
+
+.composer-heading {
+  margin-bottom: 0;
+}
+
+.composer-section {
+  display: grid;
+  gap: 16px;
+}
+
+.composer-footnote {
+  margin: 0;
+}
+
+.workspace-grid {
+  align-items: start;
+  display: flex;
+  gap: 28px;
+}
+
+.version-grid {
+  gap: 20px;
+}
+
+.field-version {
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+}
+
+.field-version-before {
+  background: rgba(184, 77, 98, 0.05);
+  border-color: rgba(184, 77, 98, 0.18);
+}
+
+.field-version-after {
+  background: rgba(45, 122, 95, 0.05);
+  border-color: rgba(45, 122, 95, 0.18);
+}
+
+.version-label {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.version-label-before {
+  background: rgba(184, 77, 98, 0.12);
+  color: #9a3d50;
+}
+
+.version-label-after {
+  background: rgba(45, 122, 95, 0.12);
+  color: #2d7a5f;
+}
+
+.diff-columns {
+  margin-top: 18px;
+  display: flex;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.diff-arrow {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 1.4rem;
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+
+.diff-pane {
+  flex: 1 1 300px;
+  padding: 18px;
+}
+
+.diff-pane-before {
+  background: rgba(184, 77, 98, 0.06);
+  border-color: rgba(184, 77, 98, 0.22);
+}
+
+.diff-pane-after {
+  background: rgba(45, 122, 95, 0.06);
+  border-color: rgba(45, 122, 95, 0.22);
+}
+
+.diff-pane-label {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.diff-pane-label-before {
+  background: rgba(184, 77, 98, 0.14);
+  color: #9a3d50;
+}
+
+.diff-pane-label-after {
+  background: rgba(45, 122, 95, 0.14);
+  color: #2d7a5f;
+}
+
+.preview-panel-before {
+  background: rgba(184, 77, 98, 0.05);
+  border-color: rgba(184, 77, 98, 0.18);
+}
+
+.preview-panel-after {
+  background: rgba(45, 122, 95, 0.05);
+  border-color: rgba(45, 122, 95, 0.18);
+}
+
+.change-card {
+  padding: 24px;
 }
 
 .dashboard-hero-side {
@@ -2028,18 +2246,6 @@ textarea {
 
 .dashboard-panel {
   min-width: 0;
-}
-
-.workspace-grid {
-  align-items: start;
-}
-
-.composer-card {
-  flex: 1.22;
-}
-
-.run-card {
-  flex: 0.78;
 }
 
 .workspace-test-grid {
@@ -2128,7 +2334,7 @@ textarea {
 }
 
 .change-card {
-  padding: 18px;
+  padding: 24px;
 }
 
 .change-topline {
@@ -2162,14 +2368,6 @@ textarea {
   background: rgba(45, 122, 95, 0.1);
   color: #2d7a5f;
   border: 1px solid rgba(45, 122, 95, 0.18);
-}
-
-.diff-columns {
-  margin-top: 14px;
-}
-
-.diff-pane {
-  flex: 1 1 300px;
 }
 
 .diff-pane pre {
@@ -2306,7 +2504,27 @@ textarea {
     align-items: stretch;
   }
 
-  .landing-hero,
+  .workspace-page-head {
+    flex-direction: column;
+  }
+
+  .ai-status-card {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .composer-card {
+    padding: 28px 24px;
+  }
+
+  .diff-columns {
+    flex-direction: column;
+  }
+
+  .diff-arrow {
+    transform: rotate(90deg);
+    padding: 4px 0;
+  }
   .landing-hero-open {
     min-height: auto;
     padding-bottom: 56px;
