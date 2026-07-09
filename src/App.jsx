@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { supabase } from './supabase.js';
 
 const DEFAULT_MODEL = 'openrouter/free';
-const API_BASE = '';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const FN_BASE = `${SUPABASE_URL}/functions/v1`;
 
 const emptyForm = {
   mode: 'url',
@@ -123,13 +124,22 @@ function BrandMark() {
   return <img className="brand-mark" src="/termswatch-mark.svg" alt="" aria-hidden="true" />;
 }
 
+function edgeFunctionUrl(path) {
+  // /api/compare → compare function; everything else → api function
+  if (path === '/api/compare') return `${FN_BASE}/compare`;
+  // Strip /api prefix and route to the api function
+  const stripped = path.replace(/^\/api/, '');
+  return `${FN_BASE}/api${stripped}`;
+}
+
 async function apiFetch(path, options = {}) {
   const {
     data: { session },
   } = await supabase.auth.getSession();
   const token = session?.access_token;
 
-  const response = await fetch(`${API_BASE}${path}`, {
+  const url = edgeFunctionUrl(path);
+  const response = await fetch(url, {
     ...options,
     headers: {
       'content-type': 'application/json',
