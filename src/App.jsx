@@ -997,7 +997,7 @@ function ReportDetail({ report, filters, setFilters, copied, copyShareLink }) {
             <button type="button" className="secondary-button" onClick={copyShareLink}>
               {copied ? 'Link copied' : 'Copy share link'}
             </button>
-            <a className="secondary-button as-link" href={`${API_BASE}/api/export/${report.id}`}>
+            <a className="secondary-button as-link" href={edgeFunctionUrl(`/api/export/${report.id}`)}>
               Export markdown
             </a>
             <button type="button" className="secondary-button" onClick={() => window.print()}>
