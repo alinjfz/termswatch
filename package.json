@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/dev.mjs",
+    "dev:web": "vite",
     "api": "node server/index.js",
     "dev:full": "node scripts/dev.mjs",
     "build": "vite build",

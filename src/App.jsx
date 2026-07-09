@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 const DEFAULT_MODEL = 'default';
-const API_BASE = import.meta.env.DEV ? 'http://127.0.0.1:8787' : '';
+const API_BASE = '';
 
 const emptyForm = {
   mode: 'url',
