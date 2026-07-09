@@ -106,7 +106,7 @@ test('e2e smoke: signup, compare, history, export, and landing build', async () 
       headers: { cookie },
       body: JSON.stringify({
         mode: 'text',
-        model: 'openrouter/free',
+        model: 'default',
         previous: { kind: 'text', value: 'We share data with service providers only.' },
         current: { kind: 'text', value: 'We may share personal information with affiliates and partners.' },
       }),

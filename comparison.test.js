@@ -77,12 +77,12 @@ test('getAIProviderStatus reports whether model credentials are configured', () 
 
   const unconfigured = getAIProviderStatus();
   assert.equal(unconfigured.configured, false);
-  assert.match(unconfigured.message, /OPENROUTER_API_KEY|OPENAI_API_KEY/);
+  assert.match(unconfigured.message, /Deterministic comparison/i);
 
   process.env.OPENROUTER_API_KEY = 'test-key';
   const configured = getAIProviderStatus();
   assert.equal(configured.configured, true);
-  assert.equal(configured.provider, 'OpenRouter');
+  assert.equal(configured.provider, 'Model API');
 
   if (originalOpenRouter === undefined) {
     delete process.env.OPENROUTER_API_KEY;

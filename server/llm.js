@@ -27,6 +27,20 @@ const ComparisonSchema = z.object({
 const ANALYST_INSTRUCTIONS =
   'You are a policy-comparison analyst. Improve the baseline change review, keep the disclaimer stance informational only, and do not invent changes that are not grounded in the provided text.';
 
+function resolveModel(model) {
+  if (!model || model === 'default') {
+    if (process.env.OPENROUTER_API_KEY) {
+      return 'openrouter/free';
+    }
+    if (process.env.OPENAI_API_KEY) {
+      return 'gpt-4o-mini';
+    }
+    return 'openrouter/free';
+  }
+
+  return model;
+}
+
 function getLLMProviderConfig() {
   if (process.env.OPENROUTER_API_KEY) {
     const headers = {};
@@ -41,6 +55,7 @@ function getLLMProviderConfig() {
 
     return {
       provider: 'OpenRouter',
+      providerLabel: 'Model API',
       client: new OpenAI({
         apiKey: process.env.OPENROUTER_API_KEY,
         baseURL: 'https://openrouter.ai/api/v1',
@@ -52,6 +67,7 @@ function getLLMProviderConfig() {
   if (process.env.OPENAI_API_KEY) {
     return {
       provider: 'OpenAI',
+      providerLabel: 'Model API',
       client: new OpenAI({ apiKey: process.env.OPENAI_API_KEY }),
     };
   }
@@ -65,16 +81,16 @@ export function getAIProviderStatus() {
     return {
       configured: false,
       provider: null,
-      defaultModel: 'openrouter/free',
-      message: 'No OPENROUTER_API_KEY or OPENAI_API_KEY found. Add one to .env to enable live model reasoning.',
+      defaultModel: 'default',
+      message: 'Deterministic comparison is active.',
     };
   }
 
   return {
     configured: true,
-    provider: config.provider,
-    defaultModel: 'openrouter/free',
-    message: `Live model reasoning is available via ${config.provider}.`,
+    provider: config.providerLabel,
+    defaultModel: 'default',
+    message: 'Live model reasoning is available.',
   };
 }
 
@@ -199,7 +215,7 @@ async function runLLMEnhancement({ previousText, currentText, baseline, model })
       baseline,
       model,
     });
-    return { parsed, provider: config.provider };
+    return { parsed, provider: config.providerLabel };
   } catch (error) {
     lastError = error;
   }
@@ -212,7 +228,7 @@ async function runLLMEnhancement({ previousText, currentText, baseline, model })
       baseline,
       model,
     });
-    return { parsed, provider: config.provider };
+    return { parsed, provider: config.providerLabel };
   } catch (error) {
     lastError = error;
     throw lastError instanceof Error ? lastError : new Error('Model enhancement failed.');
@@ -230,7 +246,8 @@ function applyFallbackMessaging(baseline, reason) {
   ].slice(0, 5);
 }
 
-export async function analyzeDocuments({ previousText, currentText, mode, model = 'openrouter/free' }) {
+export async function analyzeDocuments({ previousText, currentText, mode, model = 'default' }) {
+  const resolvedModel = resolveModel(model);
   const baseline = runDeterministicAnalysis(previousText, currentText);
   let enhanced = null;
   let modelMode = 'deterministic fallback';
@@ -238,10 +255,10 @@ export async function analyzeDocuments({ previousText, currentText, mode, model 
   const aiStatus = getAIProviderStatus();
 
   try {
-    enhanced = await runLLMEnhancement({ previousText, currentText, baseline, model });
+    enhanced = await runLLMEnhancement({ previousText, currentText, baseline, model: resolvedModel });
     if (enhanced) {
-      modelMode = `LLM enhanced via ${enhanced.provider} (${model})`;
-      enhancementNote = `Model reasoning upgraded headlines, summaries, and clause explanations via ${enhanced.provider}.`;
+      modelMode = 'LLM enhanced';
+      enhancementNote = 'Model reasoning upgraded headlines, summaries, and clause explanations.';
     } else {
       applyFallbackMessaging(
         baseline,

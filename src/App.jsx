@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-const DEFAULT_MODEL = 'openrouter/free';
+const DEFAULT_MODEL = 'default';
 const API_BASE = import.meta.env.DEV ? 'http://127.0.0.1:8787' : '';
 
 const emptyForm = {
@@ -646,7 +646,7 @@ function ComparisonWorkspace({
         <div className={classNames('ai-status-card', aiStatus?.configured ? 'is-live' : 'is-fallback')}>
           <span className="status-dot" />
           <div>
-            <strong>{aiStatus?.configured ? `Live AI · ${aiStatus.provider}` : 'Deterministic mode'}</strong>
+            <strong>{aiStatus?.configured ? 'Live AI enabled' : 'Deterministic mode'}</strong>
             <p>{aiStatus?.message || 'Checking model configuration…'}</p>
           </div>
         </div>
@@ -693,7 +693,11 @@ function ComparisonWorkspace({
             <div className="composer-section">
               <label className="field">
                 <span>Model</span>
-                <input value={form.model} onChange={(event) => setForm((current) => ({ ...current, model: event.target.value }))} />
+                <input
+                  value={form.model}
+                  placeholder="default"
+                  onChange={(event) => setForm((current) => ({ ...current, model: event.target.value }))}
+                />
               </label>
             </div>
 
@@ -771,7 +775,7 @@ function ComparisonWorkspace({
             {(report?.runLog || [
               { title: 'Awaiting input', detail: 'Enter URLs or paste both policy versions.' },
               { title: 'Clause diff', detail: 'TermsWatch segments text and detects added, removed, and modified clauses.' },
-              { title: 'Risk ranking', detail: aiStatus?.configured ? 'Model reasoning enhances summaries when configured.' : 'Add OPENROUTER_API_KEY to .env for live model reasoning.' },
+              { title: 'Risk ranking', detail: 'Clause changes are ranked by material risk for review.' },
             ]).map((item, index) => (
               <li key={item.title}>
                 <span>{String(index + 1).padStart(2, '0')}</span>
@@ -993,7 +997,7 @@ function ReportDetail({ report, filters, setFilters, copied, copyShareLink }) {
   );
 }
 
-function SettingsPage({ user, form, aiStatus }) {
+function SettingsPage({ user }) {
   return (
     <section className="dashboard-grid">
       <article className="glass-card dashboard-panel">
@@ -1004,17 +1008,6 @@ function SettingsPage({ user, form, aiStatus }) {
           <div><strong>Email</strong><span>{user?.email}</span></div>
           <div><strong>Account created</strong><span>{new Date(user?.createdAt || Date.now()).toLocaleDateString()}</span></div>
           <div><strong>Workspace mode</strong><span>Private individual workspace</span></div>
-        </div>
-      </article>
-
-      <article className="glass-card dashboard-panel">
-        <p className="section-label">Configuration</p>
-        <h2>Current processing defaults</h2>
-        <div className="settings-list">
-          <div><strong>Default model</strong><span>{form.model}</span></div>
-          <div><strong>AI provider</strong><span>{aiStatus?.configured ? aiStatus.provider : 'Not configured'}</span></div>
-          <div><strong>AI status</strong><span>{aiStatus?.message || 'Unknown'}</span></div>
-          <div><strong>Input modes</strong><span>URL and pasted text</span></div>
         </div>
       </article>
 
@@ -1261,7 +1254,7 @@ export default function App() {
   } else if (currentReportIdFromPath(currentPath)) {
     content = <ReportDetail report={report} filters={filters} setFilters={setFilters} copied={copied} copyShareLink={copyShareLink} />;
   } else if (currentPath === '/app/settings') {
-    content = <SettingsPage user={user} form={form} aiStatus={aiStatus} />;
+    content = <SettingsPage user={user} />;
   }
 
   return (
