@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from './supabase.js';
 
-const DEFAULT_MODEL = 'default';
+const DEFAULT_MODEL = 'openrouter/free';
 const API_BASE = '';
 
 const emptyForm = {
