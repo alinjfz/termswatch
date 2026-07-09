@@ -1,4 +1,4 @@
-import { supabaseAdmin } from './supabase.js';
+import { getSupabaseAdmin } from './supabase.js';
 
 export async function attachCurrentUser(req, _res, next) {
   const authHeader = req.headers.authorization;
@@ -13,7 +13,7 @@ export async function attachCurrentUser(req, _res, next) {
     const {
       data: { user },
       error,
-    } = await supabaseAdmin.auth.getUser(token);
+    } = await getSupabaseAdmin().auth.getUser(token);
 
     if (error || !user) {
       req.user = null;

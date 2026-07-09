@@ -1182,14 +1182,14 @@ export default function App() {
   }
 
   async function loadDashboard() {
-    const [historyJson, samplesJson, meJson] = await Promise.all([
-      apiFetch('/api/history', { headers: {} }),
-      apiFetch('/api/samples', { headers: {} }),
-      apiFetch('/api/auth/me', { headers: {} }),
+    const [historyResult, samplesResult, meResult] = await Promise.allSettled([
+      apiFetch('/api/history'),
+      apiFetch('/api/samples'),
+      apiFetch('/api/auth/me'),
     ]);
-    setHistory(historyJson.reports || []);
-    setSamples(samplesJson.samples || []);
-    setDashboardStats(meJson.stats || null);
+    if (historyResult.status === 'fulfilled') setHistory(historyResult.value.reports || []);
+    if (samplesResult.status === 'fulfilled') setSamples(samplesResult.value.samples || []);
+    if (meResult.status === 'fulfilled') setDashboardStats(meResult.value.stats || null);
   }
 
   async function loadReport(reportId) {
@@ -1238,15 +1238,20 @@ export default function App() {
         data: { session },
       } = await supabase.auth.getSession();
 
-      if (session?.user) {
-        const u = session.user;
-        setUser({
-          id: u.id,
-          name: u.user_metadata?.name || u.email?.split('@')[0] || '',
-          email: u.email,
-          createdAt: u.created_at,
-        });
+      if (!session?.user) {
+        // Email confirmation may be required — show a message instead of redirecting
+        setAuthError('Check your email to confirm your account, then sign in.');
+        setAuthLoading(false);
+        return;
       }
+
+      const u = session.user;
+      setUser({
+        id: u.id,
+        name: u.user_metadata?.name || u.email?.split('@')[0] || '',
+        email: u.email,
+        createdAt: u.created_at,
+      });
 
       setAuthForm(emptyAuth);
       await loadDashboard();

@@ -1,4 +1,4 @@
-import { supabaseAdmin } from './supabase.js';
+import { getSupabaseAdmin } from './supabase.js';
 
 function toReport(row) {
   return {
@@ -28,6 +28,8 @@ function toCompactReport(row) {
 }
 
 export async function saveReport(report, userId) {
+  const supabase = getSupabaseAdmin();
+
   const payload = {
     user_id: userId,
     created_at: report.createdAt || new Date().toISOString(),
@@ -45,7 +47,7 @@ export async function saveReport(report, userId) {
     payload.id = report.id;
   }
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabase
     .from('reports')
     .upsert(payload)
     .select()
@@ -56,7 +58,7 @@ export async function saveReport(report, userId) {
 }
 
 export async function listReports(userId) {
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdmin()
     .from('reports')
     .select('id, created_at, mode, headline, model_mode, metrics, sources')
     .eq('user_id', userId)
@@ -68,7 +70,7 @@ export async function listReports(userId) {
 }
 
 export async function getReport(id, userId) {
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdmin()
     .from('reports')
     .select('*')
     .eq('id', id)
@@ -80,7 +82,7 @@ export async function getReport(id, userId) {
 }
 
 export async function getUserDashboardStats(userId) {
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdmin()
     .from('reports')
     .select('metrics')
     .eq('user_id', userId);
