@@ -113,7 +113,10 @@ app.get('/api/samples', (_req, res) => {
     samples: samplePolicies.map((sample) => ({
       id: sample.id,
       name: sample.name,
+      category: sample.category,
       description: sample.description,
+      recommendedMode: sample.recommendedMode,
+      expectedOutcome: sample.expectedOutcome,
       previousUrl: sample.previousUrl,
       currentUrl: sample.currentUrl,
     })),
@@ -218,7 +221,7 @@ app.post('/api/compare', requireAuth, async (req, res) => {
   }
 });
 
-const port = 8787;
+const port = Number(process.env.PORT) || 8787;
 app.listen(port, '127.0.0.1', () => {
   console.log(`TermsWatch API listening on http://127.0.0.1:${port}`);
 });

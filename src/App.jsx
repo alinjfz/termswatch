@@ -39,6 +39,30 @@ function currentReportIdFromPath(path) {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+function formatAuthError(message, mode) {
+  const normalized = String(message || '').trim();
+
+  if (normalized === 'Invalid email or password.') {
+    return 'We could not sign you in with that email and password. Accounts are local to this TermsWatch workspace, so if this is a fresh setup you may need to create a new account.';
+  }
+
+  if (normalized.includes('String must contain at least 8 character')) {
+    return mode === 'signup'
+      ? 'Use a password with at least 8 characters to create the account.'
+      : 'Enter the full password for this workspace account. Passwords here must be at least 8 characters.';
+  }
+
+  if (normalized.includes('Invalid email address')) {
+    return 'Enter a valid email address for this workspace account.';
+  }
+
+  if (normalized === 'An account with that email already exists.') {
+    return 'That email already has a TermsWatch account in this workspace. Try logging in instead.';
+  }
+
+  return normalized || 'Authentication failed. Please try again.';
+}
+
 function metricCards(metrics) {
   return [
     { label: 'Total changes', value: metrics?.total ?? 0 },
@@ -54,6 +78,10 @@ function workspaceStats(stats, history) {
     { label: 'High-risk flags', value: stats?.highRiskFlags ?? 0 },
     { label: 'Changed clauses', value: stats?.totalChangedClauses ?? 0 },
   ];
+}
+
+function sampleModeLabel(mode) {
+  return mode === 'text' ? 'Text mode' : 'URL mode';
 }
 
 async function apiFetch(path, options = {}) {
@@ -104,13 +132,188 @@ function AppNav({ currentPath }) {
   );
 }
 
-function LandingPage({ authMode, setAuthMode, authForm, updateAuthField, handleAuthSubmit, authLoading, authError }) {
-  return (
-    <div className="site-shell">
-      <div className="bg-orb bg-orb-a" />
-      <div className="bg-orb bg-orb-b" />
+function AuthModal({
+  open,
+  onClose,
+  authMode,
+  setAuthMode,
+  authForm,
+  updateAuthField,
+  handleAuthSubmit,
+  authLoading,
+  authError,
+}) {
+  useEffect(() => {
+    if (!open) return undefined;
 
-      <header className="topbar">
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    function onKeyDown(event) {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open, onClose]);
+
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <div className="auth-modal-root" role="presentation" onClick={onClose}>
+      <div
+        className="auth-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="auth-modal-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button type="button" className="auth-modal-close" onClick={onClose} aria-label="Close">
+          ×
+        </button>
+
+        <div className="auth-card-intro">
+          <p className="section-label">{authMode === 'signup' ? 'Get started' : 'Welcome back'}</p>
+          <h2 id="auth-modal-title">{authMode === 'signup' ? 'Open your workspace' : 'Sign in to your workspace'}</h2>
+          <p className="auth-copy">Private report history, exports, and direct report links — all in one place.</p>
+        </div>
+
+        <form className="auth-form" onSubmit={handleAuthSubmit}>
+          {authMode === 'signup' && (
+            <label className="field">
+              <span>Full name</span>
+              <input
+                value={authForm.name}
+                onChange={(event) => updateAuthField('name', event.target.value)}
+                placeholder="Jordan Lee"
+                autoComplete="name"
+              />
+            </label>
+          )}
+          <label className="field">
+            <span>Email</span>
+            <input
+              type="email"
+              value={authForm.email}
+              onChange={(event) => updateAuthField('email', event.target.value)}
+              placeholder="you@company.com"
+              autoComplete="email"
+              autoCapitalize="none"
+              spellCheck={false}
+            />
+          </label>
+          <label className="field">
+            <span>Password</span>
+            <input
+              type="password"
+              value={authForm.password}
+              onChange={(event) => updateAuthField('password', event.target.value)}
+              placeholder="At least 8 characters"
+              autoComplete={authMode === 'signup' ? 'new-password' : 'current-password'}
+            />
+          </label>
+          <button className="primary-button auth-button" disabled={authLoading}>
+            {authLoading ? 'Working…' : authMode === 'signup' ? 'Create account' : 'Log in'}
+          </button>
+          {authError && <div className="error-banner">{authError}</div>}
+        </form>
+
+        <div className="auth-footer">
+          <span>{authMode === 'signup' ? 'Already have an account?' : 'Need an account?'}</span>
+          <button
+            type="button"
+            className="inline-button"
+            onClick={() => setAuthMode((current) => (current === 'signup' ? 'login' : 'signup'))}
+          >
+            {authMode === 'signup' ? 'Log in' : 'Sign up'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LandingVisual() {
+  return (
+    <div className="landing-visual" aria-hidden="true">
+      <div className="visual-aura" />
+      <div className="visual-ring visual-ring-a" />
+      <div className="visual-ring visual-ring-b" />
+      <div className="visual-doc visual-doc-back">
+        <div className="visual-line" />
+        <div className="visual-line visual-line-short" />
+        <div className="visual-line" />
+        <div className="visual-line visual-line-short" />
+      </div>
+      <div className="visual-doc visual-doc-front">
+        <div className="visual-doc-header">
+          <span className="visual-dot" />
+          <span>Policy comparison</span>
+        </div>
+        <div className="visual-line visual-line-muted" />
+        <div className="visual-line visual-line-removed" />
+        <div className="visual-line visual-line-added" />
+        <div className="visual-line visual-line-short" />
+        <div className="visual-flag">Data sharing · High risk</div>
+      </div>
+      <div className="visual-float visual-float-a">
+        <strong>91</strong>
+        <span>Risk score</span>
+      </div>
+      <div className="visual-float visual-float-b">
+        <strong>3</strong>
+        <span>Changes flagged</span>
+      </div>
+    </div>
+  );
+}
+
+function LandingPage({ authMode, setAuthMode, authForm, updateAuthField, handleAuthSubmit, authLoading, authError }) {
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+
+  function openAuthModal(mode = 'signup') {
+    setAuthMode(mode);
+    setAuthModalOpen(true);
+  }
+
+  function closeAuthModal() {
+    setAuthModalOpen(false);
+  }
+
+  const workflow = [
+    {
+      step: '01',
+      title: 'Ingest both versions',
+      detail: 'Paste text or point at live policy URLs.',
+    },
+    {
+      step: '02',
+      title: 'Review the diff',
+      detail: 'Clause-level changes, ranked by material risk.',
+    },
+    {
+      step: '03',
+      title: 'Share the evidence',
+      detail: 'Save, export, and reopen when decisions need proof.',
+    },
+  ];
+
+  return (
+    <div className="site-shell landing-site">
+      <div className="landing-backdrop" aria-hidden="true">
+        <div className="landing-glow landing-glow-a" />
+        <div className="landing-glow landing-glow-b" />
+        <div className="landing-glow landing-glow-c" />
+      </div>
+
+      <header className="landing-topbar">
         <div className="brand-lockup">
           <span className="brand-mark">TW</span>
           <div>
@@ -118,255 +321,302 @@ function LandingPage({ authMode, setAuthMode, authForm, updateAuthField, handleA
             <p>Policy change intelligence</p>
           </div>
         </div>
-        <nav className="top-actions">
-          <button className="nav-button" onClick={() => setAuthMode('login')}>
+        <nav className="landing-nav" aria-label="Landing">
+          <a href="#showcase">Product</a>
+          <a href="#workflow">Workflow</a>
+        </nav>
+        <div className="top-actions">
+          <button className="nav-button" onClick={() => openAuthModal('login')}>
             Log in
           </button>
-          <button className="primary-button" onClick={() => setAuthMode('signup')}>
+          <button className="primary-button" onClick={() => openAuthModal('signup')}>
             Start free
           </button>
-        </nav>
+        </div>
       </header>
 
       <main className="landing-main">
-        <section className="landing-hero glass-card">
-          <div className="landing-copy">
-            <p className="section-label">Monitor terms without manual redlines</p>
-            <h1>Policy review infrastructure for legal, procurement, privacy, and trust teams.</h1>
-            <p className="hero-text">
-              TermsWatch collects two policy versions, identifies the clauses that changed,
-              explains the impact in plain language, and gives your team a review-ready output
-              you can save, share, and act on.
+        <section className="landing-hero landing-hero-open">
+          <div className="landing-hero-copy reveal-up">
+            <p className="section-label">Policy change intelligence</p>
+            <h1>
+              Policy changes,
+              <em> made legible.</em>
+            </h1>
+            <p className="hero-lead">
+              Compare terms and vendor policies in minutes — not days. Clause-level diffs, risk-ranked findings,
+              and plain-language summaries in one private workspace.
             </p>
-            <div className="hero-badges">
-              <span className="pill">URL ingestion</span>
-              <span className="pill">Clause-level diffing</span>
-              <span className="pill">Risk-ranked summaries</span>
-              <span className="pill">Private workspace</span>
-            </div>
-            <div className="landing-metrics">
-              <div className="metric-showcase">
-                <strong>One workspace</strong>
-                <span>Ingest, compare, review, export</span>
-              </div>
-              <div className="metric-showcase">
-                <strong>Built for teams</strong>
-                <span>Legal ops, procurement, compliance, vendor risk</span>
-              </div>
-              <div className="metric-showcase">
-                <strong>Fast first pass</strong>
-                <span>Reduce review time before escalation</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="auth-card">
-            <div className="card-heading">
-              <div>
-                <p className="section-label">{authMode === 'signup' ? 'Create workspace' : 'Sign in'}</p>
-                <h2>{authMode === 'signup' ? 'Open your TermsWatch account' : 'Access your dashboard'}</h2>
-              </div>
-            </div>
-
-            <form className="auth-form" onSubmit={handleAuthSubmit}>
-              {authMode === 'signup' && (
-                <label className="field">
-                  <span>Full name</span>
-                  <input value={authForm.name} onChange={(event) => updateAuthField('name', event.target.value)} />
-                </label>
-              )}
-              <label className="field">
-                <span>Email</span>
-                <input type="email" value={authForm.email} onChange={(event) => updateAuthField('email', event.target.value)} />
-              </label>
-              <label className="field">
-                <span>Password</span>
-                <input type="password" value={authForm.password} onChange={(event) => updateAuthField('password', event.target.value)} />
-              </label>
-              <button className="primary-button auth-button" disabled={authLoading}>
-                {authLoading ? 'Working…' : authMode === 'signup' ? 'Create account' : 'Log in'}
+            <div className="hero-cta-row">
+              <button className="primary-button" onClick={() => openAuthModal('signup')}>
+                Create workspace
               </button>
-              {authError && <div className="error-banner">{authError}</div>}
-            </form>
-
-            <div className="auth-footer">
-              <span>{authMode === 'signup' ? 'Already have an account?' : 'Need an account?'}</span>
               <button
-                className="inline-button"
-                onClick={() => setAuthMode((current) => (current === 'signup' ? 'login' : 'signup'))}
+                className="secondary-button"
+                onClick={() => document.getElementById('showcase')?.scrollIntoView({ behavior: 'smooth' })}
               >
-                {authMode === 'signup' ? 'Log in' : 'Sign up'}
+                See the product
               </button>
             </div>
+            <p className="hero-footnote">For legal ops, privacy, procurement, compliance, and vendor risk teams.</p>
+          </div>
+
+          <div className="landing-hero-visual reveal-up reveal-delay-1">
+            <LandingVisual />
           </div>
         </section>
 
-        <section className="trust-strip">
-          <span>Structured summaries</span>
-          <span>Clause-aware comparisons</span>
-          <span>Saved review history</span>
-          <span>Markdown export</span>
-          <span>Private account workspace</span>
-        </section>
-
-        <section className="landing-grid">
-          <article className="glass-card landing-panel">
-            <p className="section-label">Platform</p>
-            <h2>Everything needed for policy drift review</h2>
-            <div className="feature-list">
-              <div><strong>Ingest live URLs</strong><span>Collect the old and new versions directly from source pages when possible.</span></div>
-              <div><strong>Normalize and compare</strong><span>Detect added, removed, and modified clauses in a stable review pipeline.</span></div>
-              <div><strong>Assess materiality</strong><span>Rank risk and translate changes into concise, plain-English takeaways.</span></div>
-              <div><strong>Preserve the record</strong><span>Keep a searchable workspace history with exports for follow-up and audit trails.</span></div>
-            </div>
-          </article>
-
-          <article className="glass-card landing-panel">
-            <p className="section-label">Who it serves</p>
-            <h2>Designed for teams who review terms at scale</h2>
-            <div className="feature-list">
-              <div><strong>Legal operations</strong><span>Speed up first-pass review before handing material issues to counsel.</span></div>
-              <div><strong>Procurement and vendor risk</strong><span>Catch policy and commercial term changes before approvals move ahead.</span></div>
-              <div><strong>Privacy and trust</strong><span>Track changes in disclosures, data handling language, and dispute terms.</span></div>
-              <div><strong>Founders and operators</strong><span>Keep policy changes visible without turning the process into manual overhead.</span></div>
-            </div>
-          </article>
-        </section>
-
-        <section className="glass-card landing-panel">
-          <div className="card-heading">
-            <div>
-              <p className="section-label">Workflow</p>
-              <h2>From URL to review packet in one pass</h2>
-            </div>
+        <section id="showcase" className="landing-showcase-band reveal-up">
+          <div className="landing-section-head">
+            <p className="section-label">The review packet</p>
+            <h2>Everything your team needs in one clear surface.</h2>
+            <p className="section-lead">
+              Executive summary up top. Changed clauses below. Risk labels and before/after text where it matters.
+            </p>
           </div>
-          <div className="workflow-grid">
-            <div className="workflow-step">
-              <span>01</span>
-              <strong>Collect versions</strong>
-              <p>Bring in URLs or pasted text for the original and updated policy.</p>
+
+          <div className="preview-frame preview-frame-hero">
+            <div className="preview-chrome">
+              <span className="preview-dot preview-dot-a" />
+              <span className="preview-dot preview-dot-b" />
+              <span className="preview-dot preview-dot-c" />
+              <span className="preview-chrome-title">Vendor privacy policy — comparison report</span>
             </div>
-            <div className="workflow-step">
-              <span>02</span>
-              <strong>Generate the diff</strong>
-              <p>Normalize sections and identify clause-level changes with consistent structure.</p>
-            </div>
-            <div className="workflow-step">
-              <span>03</span>
-              <strong>Prioritize what matters</strong>
-              <p>Highlight material changes, summarize risk, and produce a report your team can use immediately.</p>
+            <div className="preview-shell">
+              <div className="preview-topline">
+                <span className="status-dot" />
+                <strong>Material changes detected</strong>
+                <span className="preview-score">Score 91</span>
+              </div>
+              <div className="preview-summary">
+                <p>3 high-risk changes need review</p>
+                <span>Broader data sharing, new dispute language, and auto-renewal terms.</span>
+              </div>
+              <div className="preview-columns">
+                <div className="preview-panel preview-panel-before">
+                  <span>Before</span>
+                  <p>We share data with service providers only to support operations.</p>
+                </div>
+                <div className="preview-panel preview-panel-after">
+                  <span>After</span>
+                  <p>We may share personal information with affiliates, analytics, and advertising partners.</p>
+                </div>
+              </div>
+              <div className="preview-tags">
+                <span className="risk-chip risk-high">Data sharing expansion</span>
+                <span className="tag">privacy</span>
+                <span className="tag">modified</span>
+              </div>
             </div>
           </div>
         </section>
 
-        <section className="landing-detail-grid">
-          <article className="glass-card landing-panel">
-            <p className="section-label">Outputs</p>
-            <h2>Built to shorten time-to-decision</h2>
-            <div className="output-preview">
-              <div className="output-card">
-                <strong>Executive summary</strong>
-                <p>Review-ready bullets for stakeholders who do not need the full legal text.</p>
-              </div>
-              <div className="output-card">
-                <strong>Risk-tagged changes</strong>
-                <p>Surface high-impact clauses first so teams know where to focus.</p>
-              </div>
-              <div className="output-card">
-                <strong>Shareable reports</strong>
-                <p>Keep findings portable through saved history and exportable markdown.</p>
-              </div>
-            </div>
-          </article>
+        <section id="workflow" className="landing-workflow-band reveal-up">
+          <div className="landing-section-head landing-section-head-left">
+            <p className="section-label">How it works</p>
+            <h2>Three steps from raw policy to review decision.</h2>
+          </div>
+          <div className="workflow-strip">
+            {workflow.map((item) => (
+              <article key={item.step} className="workflow-card">
+                <span className="workflow-number">{item.step}</span>
+                <h3>{item.title}</h3>
+                <p>{item.detail}</p>
+              </article>
+            ))}
+          </div>
+        </section>
 
-          <article className="glass-card landing-panel">
-            <p className="section-label">Security and control</p>
-            <h2>A serious product surface, not a throwaway demo</h2>
-            <div className="feature-list">
-              <div><strong>Authenticated workspace</strong><span>Each user has private history and account-scoped reports.</span></div>
-              <div><strong>Structured API layer</strong><span>Landing, auth, dashboard, and report flows are separated clearly.</span></div>
-              <div><strong>Model flexibility</strong><span>OpenRouter free by default, with provider fallback when needed.</span></div>
+        <section className="landing-trust-band reveal-up">
+          <div className="trust-visual" aria-hidden="true">
+            <div className="trust-visual-inner">
+              <span className="trust-shield" />
             </div>
-          </article>
+          </div>
+          <div className="trust-copy">
+            <p className="section-label">Built for production</p>
+            <h2>Private, server-side, and reliable when models are not.</h2>
+            <ul className="trust-list">
+              <li>Reports stay scoped to your authenticated workspace.</li>
+              <li>URL fetching and extraction run on the server, not in the browser.</li>
+              <li>Deterministic comparison still delivers a full packet if AI enhancement is down.</li>
+            </ul>
+          </div>
+        </section>
+
+        <section className="landing-cta landing-cta-minimal reveal-up">
+          <h2>Ready to review your next policy change?</h2>
+          <button className="primary-button" onClick={() => openAuthModal('signup')}>
+            Create workspace
+          </button>
         </section>
       </main>
+
+      <AuthModal
+        open={authModalOpen}
+        onClose={closeAuthModal}
+        authMode={authMode}
+        setAuthMode={setAuthMode}
+        authForm={authForm}
+        updateAuthField={updateAuthField}
+        handleAuthSubmit={handleAuthSubmit}
+        authLoading={authLoading}
+        authError={authError}
+      />
+
+      <footer className="landing-footer">
+        <div className="brand-lockup compact">
+          <span className="brand-mark">TW</span>
+          <div>
+            <strong>TermsWatch</strong>
+            <p>Policy change intelligence</p>
+          </div>
+        </div>
+        <p className="landing-footer-note">
+          TermsWatch explains policy changes for review workflows. It does not provide legal advice.
+        </p>
+      </footer>
+    </div>
+  );
+}
+
+function DashboardVisual({ comparisons, highRisk }) {
+  return (
+    <div className="dashboard-visual" aria-hidden="true">
+      <div className="dashboard-visual-aura" />
+      <div className="dashboard-visual-ring" />
+      <div className="dashboard-visual-stack">
+        <div className="dashboard-visual-sheet dashboard-visual-sheet-back" />
+        <div className="dashboard-visual-sheet dashboard-visual-sheet-mid" />
+        <div className="dashboard-visual-sheet dashboard-visual-sheet-front">
+          <span className="dashboard-visual-label">Latest review</span>
+          <div className="dashboard-visual-line" />
+          <div className="dashboard-visual-line dashboard-visual-line-accent" />
+          <div className="dashboard-visual-line dashboard-visual-line-short" />
+        </div>
+      </div>
+      <div className="dashboard-visual-float dashboard-visual-float-a">
+        <strong>{comparisons}</strong>
+        <span>Comparisons</span>
+      </div>
+      <div className="dashboard-visual-float dashboard-visual-float-b">
+        <strong>{highRisk}</strong>
+        <span>High-risk flags</span>
+      </div>
     </div>
   );
 }
 
 function DashboardOverview({ user, stats, history, setRoute, setReportId }) {
-  const recent = history.slice(0, 4);
+  const recent = history.slice(0, 5);
+  const latest = history[0];
+  const firstName = user?.name?.split(' ')[0] || 'there';
+  const totals = workspaceStats(stats, history);
+
   return (
-    <>
-      <section className="dashboard-hero glass-card">
-        <div className="hero-copy">
-          <p className="section-label">Workspace overview</p>
-          <h1>{user?.name ? `${user.name}, your policy review desk is live.` : 'Your policy review desk is live.'}</h1>
-          <p className="hero-text">
-            Start a new comparison, reopen saved reports, and keep your first-pass review workflow inside one focused workspace.
+    <div className="dashboard-home">
+      <section className="dashboard-welcome">
+        <div className="dashboard-welcome-copy reveal-up">
+          <p className="section-label">Workspace</p>
+          <h1>
+            Welcome back,
+            <em> {firstName}.</em>
+          </h1>
+          <p className="hero-lead">
+            Compare policy versions, surface material risk, and keep every review packet saved for when decisions need evidence.
           </p>
+          <div className="hero-cta-row">
+            <button className="primary-button" onClick={() => setRoute('/app/new')}>
+              New comparison
+            </button>
+            <button className="secondary-button" onClick={() => setRoute('/app/reports')}>
+              View all reports
+            </button>
+          </div>
+          {latest ? (
+            <p className="hero-footnote">
+              Latest report · {new Date(latest.createdAt).toLocaleDateString()} · {latest.metrics.highRisk} high-risk changes
+            </p>
+          ) : (
+            <p className="hero-footnote">No comparisons yet — run your first review to populate the workspace.</p>
+          )}
         </div>
-        <div className="dashboard-overview">
-          {workspaceStats(stats, history).map((item) => (
-            <div key={item.label} className="metric-showcase">
-              <strong>{item.value}</strong>
-              <span>{item.label}</span>
-            </div>
-          ))}
+
+        <div className="dashboard-welcome-visual reveal-up reveal-delay-1">
+          <DashboardVisual
+            comparisons={totals[0]?.value ?? 0}
+            highRisk={totals[1]?.value ?? 0}
+          />
         </div>
       </section>
 
-      <section className="dashboard-grid">
-        <article className="glass-card dashboard-panel">
-          <div className="card-heading">
-            <div>
-              <p className="section-label">Start fast</p>
-              <h2>Next actions</h2>
-            </div>
-          </div>
-          <div className="action-tile-grid">
-            <button className="action-tile" onClick={() => setRoute('/app/new')}>
-              <strong>Run a new comparison</strong>
-              <span>Upload two versions by URL or pasted text and generate a fresh review.</span>
-            </button>
-            <button className="action-tile" onClick={() => setRoute('/app/reports')}>
-              <strong>Open saved reports</strong>
-              <span>Review older outputs, export findings, and revisit high-risk changes.</span>
-            </button>
-            <button className="action-tile" onClick={() => setRoute('/app/settings')}>
-              <strong>Adjust workspace settings</strong>
-              <span>Check your provider defaults and account details.</span>
-            </button>
-          </div>
-        </article>
+      <section className="dashboard-stats-strip reveal-up">
+        {totals.map((item) => (
+          <article key={item.label} className="dashboard-stat">
+            <strong>{item.value}</strong>
+            <span>{item.label}</span>
+          </article>
+        ))}
+      </section>
 
-        <article className="glass-card dashboard-panel">
-          <div className="card-heading">
-            <div>
-              <p className="section-label">Recent activity</p>
-              <h2>Latest reports</h2>
-            </div>
+      <section className="dashboard-recent-band reveal-up">
+        <div className="dashboard-section-head">
+          <div>
+            <p className="section-label">Recent activity</p>
+            <h2>{recent.length ? 'Your latest review packets' : 'Your workspace is ready'}</h2>
           </div>
-          <div className="recent-report-list">
+          {recent.length > 0 && (
+            <button type="button" className="secondary-button" onClick={() => setRoute('/app/reports')}>
+              See all
+            </button>
+          )}
+        </div>
+
+        {recent.length > 0 ? (
+          <div className="dashboard-report-list">
             {recent.map((item) => (
               <button
                 key={item.id}
-                className="recent-report"
+                type="button"
+                className="dashboard-report-row"
                 onClick={() => {
                   setReportId(item.id);
                   setRoute(`/app/reports/${item.id}`);
                 }}
               >
-                <strong>{item.headline}</strong>
-                <span>{item.metrics.total} changes · {item.metrics.highRisk} high-risk</span>
-                <span>{new Date(item.createdAt).toLocaleString()}</span>
+                <div className="dashboard-report-main">
+                  <strong>{item.headline}</strong>
+                  <span>
+                    {item.sources.previous.title} → {item.sources.current.title}
+                  </span>
+                </div>
+                <div className="dashboard-report-meta">
+                  <span className={classNames('risk-chip', item.metrics.highRisk > 0 ? 'risk-high' : 'risk-low')}>
+                    {item.metrics.highRisk > 0 ? `${item.metrics.highRisk} high-risk` : 'No high-risk'}
+                  </span>
+                  <span>{item.metrics.total} changes</span>
+                  <span>{new Date(item.createdAt).toLocaleDateString()}</span>
+                </div>
               </button>
             ))}
-            {!recent.length && <p className="muted">No comparisons yet. Run your first review to populate the workspace.</p>}
           </div>
-        </article>
+        ) : (
+          <div className="dashboard-empty">
+            <div className="dashboard-empty-visual" aria-hidden="true">
+              <div className="dashboard-empty-doc" />
+              <div className="dashboard-empty-doc dashboard-empty-doc-offset" />
+            </div>
+            <div className="dashboard-empty-copy">
+              <h3>Run your first comparison</h3>
+              <p>Load a sample or paste two policy versions to generate your first review packet.</p>
+              <button type="button" className="primary-button" onClick={() => setRoute('/app/new')}>
+                Open comparison workspace
+              </button>
+            </div>
+          </div>
+        )}
       </section>
-    </>
+    </div>
   );
 }
 
@@ -381,6 +631,8 @@ function ComparisonWorkspace({
   report,
   setRoute,
 }) {
+  const featuredSamples = samples.slice(0, 3);
+
   return (
     <section className="workspace-grid">
       <form className="glass-card composer-card" onSubmit={handleCompare}>
@@ -407,11 +659,28 @@ function ComparisonWorkspace({
           </div>
         </div>
 
+        <div className="workspace-intro">
+          <div>
+            <p className="section-label">Recommended testing</p>
+            <h3>Load a sample to check the full flow before using live inputs.</h3>
+          </div>
+          <p className="muted">
+            The built-in examples make it easy to confirm URL mode, text mode, report saving, and the model-enhanced summary layer.
+          </p>
+        </div>
+
         <div className="sample-row">
-          {samples.map((sample) => (
-            <button key={sample.id} type="button" className="sample-card" onClick={() => loadSample(sample.id)}>
-              <strong>{sample.name}</strong>
+          {featuredSamples.map((sample) => (
+            <button key={sample.id} type="button" className="sample-card sample-card-rich" onClick={() => loadSample(sample.id)}>
+              <div className="sample-card-topline">
+                <strong>{sample.name}</strong>
+                <span className="pill subtle-pill">{sampleModeLabel(sample.recommendedMode)}</span>
+              </div>
               <span>{sample.description}</span>
+              <div className="sample-card-meta">
+                <span>{sample.category}</span>
+                <span>{sample.expectedOutcome}</span>
+              </div>
             </button>
           ))}
         </div>
@@ -505,6 +774,16 @@ function ComparisonWorkspace({
             </li>
           ))}
         </ol>
+        <div className="workspace-test-grid">
+          <div className="workspace-test-card">
+            <strong>What to test</strong>
+            <p>Confirm the report opens automatically, filters work, and markdown export downloads cleanly.</p>
+          </div>
+          <div className="workspace-test-card">
+            <strong>AI signal</strong>
+            <p>Look for polished headlines, stronger why-it-matters bullets, and clearer clause summaries than the raw deterministic baseline.</p>
+          </div>
+        </div>
       </section>
     </section>
   );
@@ -515,8 +794,8 @@ function ReportsPage({ history, setRoute, setReportId }) {
     <section className="glass-card dashboard-panel">
       <div className="card-heading">
         <div>
-          <p className="section-label">Reports</p>
-          <h2>Saved comparisons</h2>
+          <p className="section-label">Reports archive</p>
+          <h2>Saved comparisons and decision history</h2>
         </div>
       </div>
       <div className="report-table">
@@ -576,12 +855,32 @@ function ReportDetail({ report, filters, setFilters, copied, copyShareLink }) {
 
   return (
     <>
+      <section className="glass-card report-header">
+        <div>
+          <p className="section-label">Report detail</p>
+          <h1 className="report-title">{report.overview.headline}</h1>
+          <p className="muted">
+            {report.sources.previous.title} → {report.sources.current.title}
+          </p>
+        </div>
+        <div className="report-meta-grid">
+          <div className="metric-tile">
+            <span>Generated</span>
+            <strong>{new Date(report.createdAt).toLocaleDateString()}</strong>
+          </div>
+          <div className="metric-tile">
+            <span>Model mode</span>
+            <strong>{report.overview.modelMode}</strong>
+          </div>
+        </div>
+      </section>
+
       <section className="summary-grid">
         <article className="glass-card">
           <div className="card-heading">
             <div>
               <p className="section-label">Executive output</p>
-              <h2>Summary</h2>
+              <h2>Decision summary</h2>
             </div>
             <div className="score-badge">{report?.metrics.score ?? 0}</div>
           </div>
@@ -609,8 +908,8 @@ function ReportDetail({ report, filters, setFilters, copied, copyShareLink }) {
         <article className="glass-card">
           <div className="card-heading">
             <div>
-              <p className="section-label">Actions</p>
-              <h2>Report controls</h2>
+              <p className="section-label">Controls</p>
+              <h2>Share, export, and audit</h2>
             </div>
           </div>
           <div className="metrics-grid">
@@ -698,22 +997,35 @@ function SettingsPage({ user, form }) {
   return (
     <section className="dashboard-grid">
       <article className="glass-card dashboard-panel">
-        <p className="section-label">Account</p>
-        <h2>Workspace details</h2>
+        <p className="section-label">Profile</p>
+        <h2>Account and workspace identity</h2>
         <div className="settings-list">
           <div><strong>Name</strong><span>{user?.name}</span></div>
           <div><strong>Email</strong><span>{user?.email}</span></div>
           <div><strong>Account created</strong><span>{new Date(user?.createdAt || Date.now()).toLocaleDateString()}</span></div>
+          <div><strong>Workspace mode</strong><span>Private individual workspace</span></div>
         </div>
       </article>
 
       <article className="glass-card dashboard-panel">
-        <p className="section-label">Model configuration</p>
-        <h2>Current defaults</h2>
+        <p className="section-label">Configuration</p>
+        <h2>Current processing defaults</h2>
         <div className="settings-list">
           <div><strong>Default model</strong><span>{form.model}</span></div>
           <div><strong>Input modes</strong><span>URL and pasted text</span></div>
           <div><strong>Provider path</strong><span>OpenRouter free by default with provider fallback</span></div>
+          <div><strong>Report export</strong><span>Markdown export enabled</span></div>
+        </div>
+      </article>
+
+      <article className="glass-card dashboard-panel">
+        <p className="section-label">Security</p>
+        <h2>Workspace operating model</h2>
+        <div className="settings-list">
+          <div><strong>History scope</strong><span>Reports are account-scoped</span></div>
+          <div><strong>URL retrieval</strong><span>Server-side fetch and extraction</span></div>
+          <div><strong>Fallback mode</strong><span>Deterministic comparison remains available</span></div>
+          <div><strong>Session model</strong><span>Cookie-based authenticated workspace access</span></div>
         </div>
       </article>
     </section>
@@ -795,6 +1107,7 @@ export default function App() {
     if (!json.sample) return;
     setForm((current) => ({
       ...current,
+      mode: json.sample.recommendedMode || current.mode,
       previousUrl: json.sample.previousUrl,
       currentUrl: json.sample.currentUrl,
       previousText: json.sample.previousText,
@@ -814,8 +1127,12 @@ export default function App() {
       const endpoint = authMode === 'signup' ? '/api/auth/signup' : '/api/auth/login';
       const payload =
         authMode === 'signup'
-          ? authForm
-          : { email: authForm.email, password: authForm.password };
+          ? {
+              ...authForm,
+              name: authForm.name.trim(),
+              email: authForm.email.trim(),
+            }
+          : { email: authForm.email.trim(), password: authForm.password };
 
       const json = await apiFetch(endpoint, {
         method: 'POST',
@@ -828,7 +1145,7 @@ export default function App() {
       await loadDashboard();
       navigateTo('/app');
     } catch (submitError) {
-      setAuthError(submitError.message);
+      setAuthError(formatAuthError(submitError?.message, authMode));
     } finally {
       setAuthLoading(false);
     }
@@ -951,7 +1268,7 @@ export default function App() {
         <div className="sidebar-foot">
           <div className="sidebar-note">
             <strong>Workspace</strong>
-            <span>{history.length} saved reports</span>
+            <span>{history.length} saved reports · {dashboardStats?.highRiskFlags ?? 0} high-risk flags tracked</span>
           </div>
           <button className="secondary-button logout-button" onClick={handleLogout}>Log out</button>
         </div>
