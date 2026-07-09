@@ -1,49 +1,34 @@
-import {
-  authenticateUser,
-  createSession,
-  createUser,
-  deleteSession,
-  getUserBySessionToken,
-} from './storage.js';
-
-const SESSION_COOKIE = 'termswatch_session';
-
-function parseCookies(header) {
-  return String(header || '')
-    .split(';')
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .reduce((acc, part) => {
-      const separatorIndex = part.indexOf('=');
-      if (separatorIndex === -1) return acc;
-      const key = part.slice(0, separatorIndex).trim();
-      const value = decodeURIComponent(part.slice(separatorIndex + 1));
-      acc[key] = value;
-      return acc;
-    }, {});
-}
-
-function sessionCookie(value, expires = '') {
-  const parts = [
-    `${SESSION_COOKIE}=${encodeURIComponent(value)}`,
-    'Path=/',
-    'HttpOnly',
-    'SameSite=Lax',
-    'Max-Age=2592000',
-  ];
-  if (process.env.NODE_ENV === 'production') {
-    parts.push('Secure');
-  }
-  if (expires) {
-    parts.push(expires);
-  }
-  return parts.join('; ');
-}
+import { supabaseAdmin } from './supabase.js';
 
 export async function attachCurrentUser(req, _res, next) {
-  const cookies = parseCookies(req.headers.cookie);
-  req.sessionToken = cookies[SESSION_COOKIE] || null;
-  req.user = await getUserBySessionToken(req.sessionToken);
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    req.user = null;
+    next();
+    return;
+  }
+
+  const token = authHeader.slice(7);
+  try {
+    const {
+      data: { user },
+      error,
+    } = await supabaseAdmin.auth.getUser(token);
+
+    if (error || !user) {
+      req.user = null;
+    } else {
+      req.user = {
+        id: user.id,
+        name: user.user_metadata?.name || user.email?.split('@')[0] || '',
+        email: user.email,
+        createdAt: user.created_at,
+      };
+    }
+  } catch {
+    req.user = null;
+  }
+
   next();
 }
 
@@ -53,28 +38,4 @@ export function requireAuth(req, res, next) {
     return;
   }
   next();
-}
-
-export async function signupAndCreateSession({ name, email, password }) {
-  const user = await createUser({ name, email, password });
-  const token = await createSession(user.id);
-  return { user, token };
-}
-
-export async function loginAndCreateSession({ email, password }) {
-  const user = await authenticateUser({ email, password });
-  const token = await createSession(user.id);
-  return { user, token };
-}
-
-export function writeSessionCookie(res, token) {
-  res.setHeader('Set-Cookie', sessionCookie(token));
-}
-
-export async function clearSession(res, token) {
-  await deleteSession(token);
-  res.setHeader(
-    'Set-Cookie',
-    `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`,
-  );
 }

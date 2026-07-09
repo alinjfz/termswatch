@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { supabase } from './supabase.js';
 
 const DEFAULT_MODEL = 'default';
 const API_BASE = '';
@@ -76,22 +77,26 @@ function hasPolicyInput(form) {
 function formatAuthError(message, mode) {
   const normalized = String(message || '').trim();
 
-  if (normalized === 'Invalid email or password.') {
-    return 'We could not sign you in with that email and password. Accounts are local to this TermsWatch workspace, so if this is a fresh setup you may need to create a new account.';
+  if (normalized === 'Invalid login credentials' || normalized === 'Invalid email or password.') {
+    return 'We could not sign you in with that email and password. Check your credentials or create a new account.';
   }
 
-  if (normalized.includes('String must contain at least 8 character')) {
+  if (normalized.includes('Password should be at least') || normalized.includes('String must contain at least 8 character')) {
     return mode === 'signup'
-      ? 'Use a password with at least 8 characters to create the account.'
-      : 'Enter the full password for this workspace account. Passwords here must be at least 8 characters.';
+      ? 'Use a password with at least 6 characters to create the account.'
+      : 'Enter the full password for this workspace account.';
   }
 
-  if (normalized.includes('Invalid email address')) {
+  if (normalized.includes('Invalid email') || normalized.includes('Unable to validate email address')) {
     return 'Enter a valid email address for this workspace account.';
   }
 
-  if (normalized === 'An account with that email already exists.') {
-    return 'That email already has a TermsWatch account in this workspace. Try logging in instead.';
+  if (normalized.includes('already registered') || normalized === 'An account with that email already exists.') {
+    return 'That email already has a TermsWatch account. Try logging in instead.';
+  }
+
+  if (normalized.includes('Email not confirmed')) {
+    return 'Check your email to confirm your account, then sign in.';
   }
 
   return normalized || 'Authentication failed. Please try again.';
@@ -119,11 +124,16 @@ function BrandMark() {
 }
 
 async function apiFetch(path, options = {}) {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const token = session?.access_token;
+
   const response = await fetch(`${API_BASE}${path}`, {
-    credentials: 'include',
     ...options,
     headers: {
       'content-type': 'application/json',
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {}),
     },
   });
@@ -1116,19 +1126,45 @@ export default function App() {
   }, [locationState.path, user]);
 
   async function bootstrapAuth() {
-    try {
-      const json = await apiFetch('/api/auth/me', { headers: {} });
-      if (json.user) {
-        setUser(json.user);
-        setDashboardStats(json.stats);
-        await loadDashboard();
-        if (!locationState.path.startsWith('/app')) {
-          navigateTo('/app');
-        }
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (session?.user) {
+      const u = session.user;
+      setUser({
+        id: u.id,
+        name: u.user_metadata?.name || u.email?.split('@')[0] || '',
+        email: u.email,
+        createdAt: u.created_at,
+      });
+      await loadDashboard();
+      if (!locationState.path.startsWith('/app')) {
+        navigateTo('/app');
       }
-    } catch {
-      setUser(null);
     }
+
+    supabase.auth.onAuthStateChange((event, session) => {
+      (async () => {
+        if (event === 'SIGNED_OUT' || !session) {
+          setUser(null);
+          setDashboardStats(null);
+          setHistory([]);
+          setReport(null);
+          navigateTo('/');
+          return;
+        }
+        if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+          const u = session.user;
+          setUser({
+            id: u.id,
+            name: u.user_metadata?.name || u.email?.split('@')[0] || '',
+            email: u.email,
+            createdAt: u.created_at,
+          });
+        }
+      })();
+    });
   }
 
   async function loadPublicSamples() {
@@ -1183,23 +1219,35 @@ export default function App() {
     setAuthLoading(true);
     setAuthError('');
     try {
-      const endpoint = authMode === 'signup' ? '/api/auth/signup' : '/api/auth/login';
-      const payload =
-        authMode === 'signup'
-          ? {
-              ...authForm,
-              name: authForm.name.trim(),
-              email: authForm.email.trim(),
-            }
-          : { email: authForm.email.trim(), password: authForm.password };
+      if (authMode === 'signup') {
+        const { error } = await supabase.auth.signUp({
+          email: authForm.email.trim(),
+          password: authForm.password,
+          options: { data: { name: authForm.name.trim() } },
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: authForm.email.trim(),
+          password: authForm.password,
+        });
+        if (error) throw error;
+      }
 
-      const json = await apiFetch(endpoint, {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-      setUser(json.user);
-      setDashboardStats(json.stats);
+      if (session?.user) {
+        const u = session.user;
+        setUser({
+          id: u.id,
+          name: u.user_metadata?.name || u.email?.split('@')[0] || '',
+          email: u.email,
+          createdAt: u.created_at,
+        });
+      }
+
       setAuthForm(emptyAuth);
       await loadDashboard();
       navigateTo('/app');
@@ -1211,7 +1259,7 @@ export default function App() {
   }
 
   async function handleLogout() {
-    await apiFetch('/api/auth/logout', { method: 'POST', body: '{}' });
+    await supabase.auth.signOut();
     setUser(null);
     setDashboardStats(null);
     setHistory([]);

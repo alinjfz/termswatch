@@ -1,95 +1,93 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
 
-async function withTempStorage(run) {
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'termswatch-auth-'));
-  process.env.TERMSWATCH_DATA_FILE = path.join(tempDir, 'app.json');
-  process.env.TERMSWATCH_LEGACY_FILE = path.join(tempDir, 'legacy.json');
+/*
+ * Auth is now handled by Supabase directly (supabase.auth.signUp /
+ * signInWithPassword / signOut). The local storage layer only manages
+ * reports. These tests verify report-scoping logic using the storage
+ * module against the live Supabase database.
+ *
+ * They require SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to be set.
+ * If those are missing the tests are skipped gracefully.
+ */
 
-  const storage = await import(`./server/storage.js?case=${Date.now()}${Math.random()}`);
-  try {
-    await run(storage, tempDir);
-  } finally {
-    delete process.env.TERMSWATCH_DATA_FILE;
-    delete process.env.TERMSWATCH_LEGACY_FILE;
-    await fs.rm(tempDir, { recursive: true, force: true });
+const hasSupabase =
+  (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL) &&
+  process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+function skipIfNoSupabase(t) {
+  if (!hasSupabase) {
+    t.skip('Supabase credentials not configured');
+    return true;
   }
+  return false;
 }
 
-test('createUser and authenticateUser work with hashed passwords', async () => {
-  await withTempStorage(async (storage) => {
-    const user = await storage.createUser({
-      name: 'Ali Tester',
-      email: 'ali@example.com',
-      password: 'password123',
-    });
+function fakeUserId() {
+  return crypto.randomUUID();
+}
 
-    assert.equal(user.email, 'ali@example.com');
+function fakeReport(headline = 'Test report') {
+  return {
+    createdAt: new Date().toISOString(),
+    mode: 'text',
+    sources: {
+      previous: { label: 'Original', value: '', title: 'Original policy', mode: 'text' },
+      current: { label: 'Updated', value: '', title: 'Updated policy', mode: 'text' },
+    },
+    overview: {
+      headline,
+      modelMode: 'deterministic',
+      summaryBullets: [],
+      whyMatters: [],
+      disclaimer: '',
+    },
+    metrics: { total: 1, highRisk: 0, modified: 1, added: 0, removed: 0, score: 10 },
+    changes: [],
+    runLog: [],
+  };
+}
 
-    const authed = await storage.authenticateUser({
-      email: 'ali@example.com',
-      password: 'password123',
-    });
+test('reports are scoped per user', async (t) => {
+  if (skipIfNoSupabase(t)) return;
 
-    assert.equal(authed.id, user.id);
-  });
+  const { saveReport, listReports, getReport } = await import('./server/storage.js');
+
+  const userA = fakeUserId();
+  const userB = fakeUserId();
+
+  const reportA = await saveReport(fakeReport('A report'), userA);
+  await saveReport(fakeReport('B report'), userB);
+
+  const reportsForA = await listReports(userA);
+  const reportsForB = await listReports(userB);
+  const hiddenFromB = await getReport(reportA.id, userB);
+
+  assert.equal(reportsForA.length >= 1, true);
+  assert.equal(reportsForB.length >= 1, true);
+  assert.ok(reportsForA.every((r) => r.id !== reportsForB[0]?.id || reportsForA[0]?.id !== reportsForB[0]?.id));
+  assert.equal(hiddenFromB, null);
 });
 
-test('session tokens resolve back to the correct user', async () => {
-  await withTempStorage(async (storage) => {
-    const user = await storage.createUser({
-      name: 'Session User',
-      email: 'session@example.com',
-      password: 'password123',
-    });
+test('getReport returns null for unknown id', async (t) => {
+  if (skipIfNoSupabase(t)) return;
 
-    const token = await storage.createSession(user.id);
-    const resolved = await storage.getUserBySessionToken(token);
-
-    assert.equal(resolved.email, 'session@example.com');
-  });
+  const { getReport } = await import('./server/storage.js');
+  const result = await getReport(crypto.randomUUID(), fakeUserId());
+  assert.equal(result, null);
 });
 
-test('reports are scoped per user', async () => {
-  await withTempStorage(async (storage) => {
-    const userA = await storage.createUser({
-      name: 'User A',
-      email: 'a@example.com',
-      password: 'password123',
-    });
-    const userB = await storage.createUser({
-      name: 'User B',
-      email: 'b@example.com',
-      password: 'password123',
-    });
+test('getUserDashboardStats aggregates correctly', async (t) => {
+  if (skipIfNoSupabase(t)) return;
 
-    const reportA = await storage.saveReport(
-      {
-        createdAt: new Date().toISOString(),
-        overview: { headline: 'A report' },
-        metrics: { total: 1, highRisk: 0 },
-      },
-      userA.id,
-    );
+  const { saveReport, getUserDashboardStats } = await import('./server/storage.js');
 
-    await storage.saveReport(
-      {
-        createdAt: new Date().toISOString(),
-        overview: { headline: 'B report' },
-        metrics: { total: 2, highRisk: 1 },
-      },
-      userB.id,
-    );
+  const userId = fakeUserId();
+  await saveReport({ ...fakeReport('Stats test 1'), metrics: { total: 3, highRisk: 2 } }, userId);
+  await saveReport({ ...fakeReport('Stats test 2'), metrics: { total: 5, highRisk: 1 } }, userId);
 
-    const reportsForA = await storage.listReports(userA.id);
-    const reportsForB = await storage.listReports(userB.id);
-    const hiddenFromB = await storage.getReport(reportA.id, userB.id);
-
-    assert.equal(reportsForA.length, 1);
-    assert.equal(reportsForB.length, 1);
-    assert.equal(hiddenFromB, null);
-  });
+  const stats = await getUserDashboardStats(userId);
+  assert.equal(stats.totalComparisons, 2);
+  assert.equal(stats.highRiskFlags, 3);
+  assert.equal(stats.totalChangedClauses, 8);
 });

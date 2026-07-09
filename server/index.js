@@ -6,14 +6,7 @@ import { loadEnvFile } from './env.js';
 
 loadEnvFile();
 
-import {
-  attachCurrentUser,
-  clearSession,
-  loginAndCreateSession,
-  requireAuth,
-  signupAndCreateSession,
-  writeSessionCookie,
-} from './auth.js';
+import { attachCurrentUser, requireAuth } from './auth.js';
 import { resolveSource } from './extract.js';
 import { analyzeDocuments, getAIProviderStatus } from './llm.js';
 import { getSampleById, samplePolicies } from './samples.js';
@@ -28,7 +21,10 @@ app.use(
         return;
       }
 
-      if (/^https?:\/\/127\.0\.0\.1:\d+$/.test(origin) || /^https?:\/\/localhost:\d+$/.test(origin)) {
+      if (
+        /^https?:\/\/127\.0\.0\.1:\d+$/.test(origin) ||
+        /^https?:\/\/localhost:\d+$/.test(origin)
+      ) {
         callback(null, true);
         return;
       }
@@ -65,25 +61,16 @@ async function resolveOptionalSource(source, label) {
 
   return resolveSource({ ...source, label });
 }
-const SignupSchema = z.object({
-  name: z.string().trim().min(2),
-  email: z.string().email(),
-  password: z.string().min(8),
-});
-const LoginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-});
 
 function compactReport(report) {
   return {
     id: report.id,
     createdAt: report.createdAt,
     mode: report.mode,
-    headline: report.overview.headline,
+    headline: report.overview?.headline || report.headline || '',
     metrics: report.metrics,
     sources: report.sources,
-    modelMode: report.overview.modelMode,
+    modelMode: report.overview?.modelMode || report.modelMode || '',
   };
 }
 
@@ -99,35 +86,6 @@ app.get('/api/auth/me', async (req, res) => {
 
   const stats = await getUserDashboardStats(req.user.id);
   res.json({ user: req.user, stats });
-});
-
-app.post('/api/auth/signup', async (req, res) => {
-  try {
-    const payload = SignupSchema.parse(req.body);
-    const { user, token } = await signupAndCreateSession(payload);
-    writeSessionCookie(res, token);
-    const stats = await getUserDashboardStats(user.id);
-    res.status(201).json({ user, stats });
-  } catch (error) {
-    res.status(400).json({ error: error instanceof Error ? error.message : 'Signup failed' });
-  }
-});
-
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const payload = LoginSchema.parse(req.body);
-    const { user, token } = await loginAndCreateSession(payload);
-    writeSessionCookie(res, token);
-    const stats = await getUserDashboardStats(user.id);
-    res.json({ user, stats });
-  } catch (error) {
-    res.status(400).json({ error: error instanceof Error ? error.message : 'Login failed' });
-  }
-});
-
-app.post('/api/auth/logout', async (req, res) => {
-  await clearSession(res, req.sessionToken);
-  res.json({ ok: true });
 });
 
 app.get('/api/samples', (_req, res) => {
