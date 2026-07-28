@@ -1,6 +1,14 @@
 # TermsWatch
 
-> **2nd track winner — Bolt hackathon** · [Watch the demo](https://youtube.com/video/wlfKoaUoOtQ)
+> **2nd track winner — Bolt hackathon**
+
+<p align="center">
+  <a href="https://youtu.be/wlfKoaUoOtQ">
+    <img src="https://img.youtube.com/vi/wlfKoaUoOtQ/hqdefault.jpg" alt="Watch the TermsWatch demo" width="720" />
+  </a>
+</p>
+
+<p align="center"><em>Click to watch the demo.</em></p>
 
 TermsWatch makes terms and privacy policies easier to compare before agreeing to them. Paste a URL, get the readable text, and see the meaningful changes, trade-offs, and points worth reviewing — with a deterministic fallback when an AI provider is not configured.
 
@@ -14,6 +22,12 @@ It is a full-stack app with:
 - saved report history
 - shareable report links
 - markdown export
+
+## What it helps people decide
+
+- **Before accepting:** turn long, hard-to-scan legal pages into readable source material.
+- **When comparing:** identify what actually changed between two versions instead of relying on a vague summary.
+- **After reviewing:** save, share, or export a report so decisions have an auditable trail.
 
 ## Design direction
 
