@@ -1,6 +1,10 @@
 # TermsWatch
 
-TermsWatch is now a full-stack app with:
+> **2nd track winner — Bolt hackathon** · [Watch the demo](https://youtube.com/video/wlfKoaUoOtQ)
+
+TermsWatch makes terms and privacy policies easier to compare before agreeing to them. Paste a URL, get the readable text, and see the meaningful changes, trade-offs, and points worth reviewing — with a deterministic fallback when an AI provider is not configured.
+
+It is a full-stack app with:
 
 - React + Vite frontend
 - Express backend API
