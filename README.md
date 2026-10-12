@@ -35,7 +35,7 @@ The landing page is now intentionally positioned like a production SaaS site rat
 
 ## Run locally
 
-1- Clone the repo
+1. Clone the repo
 
 ```bash
 git clone https://github.com/alinjfz/termswatch.git
