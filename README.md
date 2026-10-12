@@ -1,6 +1,6 @@
 # TermsWatch
 
-> **2nd track winner — Bolt hackathon**
+**🥈 2nd Place — Bolt Track, Leadenhall Live AI Hackathon**
 
 <p align="center">
   <a href="https://youtu.be/wlfKoaUoOtQ">
@@ -35,7 +35,15 @@ The landing page is now intentionally positioned like a production SaaS site rat
 
 ## Run locally
 
-1. Create `.env` with one of these if you want live model reasoning.
+1- Clone the repo
+
+```bash
+git clone https://github.com/alinjfz/termswatch.git
+cd termswatch
+npm install
+```
+
+2. Create `.env` with one of these if you want live model reasoning.
 
 OpenRouter is now the default path in TermsWatch, and the default model is `openrouter/free`:
 
@@ -51,7 +59,7 @@ or
 OPENAI_API_KEY=...
 ```
 
-2. Start the stack:
+3. Start the stack:
 
 ```bash
 npm run api
